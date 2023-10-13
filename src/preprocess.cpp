@@ -4,6 +4,7 @@
 
 namespace coacd
 {
+#ifdef PREPROCESS
     void SDFManifold(Model &input, Model &output, double scale, double level_set)
     {
         std::vector<Vec3s> points;
@@ -54,6 +55,7 @@ namespace coacd
 
         logger::info("Preprocess Time: {}s", double(end - start) / CLOCKS_PER_SEC);
     }
+#endif
 
     bool IsManifold(Model &input)
     {

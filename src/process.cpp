@@ -8,12 +8,15 @@
 
 namespace coacd
 {
-
     void ManifoldPreprocess(Params &params, Model &m)
     {
+#ifdef PREPROCESS
         Model tmp = m;
         m.Clear();
         SDFManifold(tmp, m, params.prep_resolution, params.dmc_thres);
+#else
+    logger::warn("Preprocessing is not available!");
+#endif
     }
 
     void MergeCH(Model &ch1, Model &ch2, Model &ch)

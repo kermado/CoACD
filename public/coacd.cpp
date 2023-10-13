@@ -88,6 +88,7 @@ std::vector<Mesh> CoACD(Mesh const &input, double threshold,
 }
 
 void set_log_level(std::string_view level) {
+#ifndef DISABLE_SPDLOG
   if (level == "off") {
     logger::get()->set_level(spdlog::level::off);
   } else if (level == "info") {
@@ -101,6 +102,7 @@ void set_log_level(std::string_view level) {
   } else {
     throw std::runtime_error("invalid log level " + std::string(level));
   }
+#endif
 }
 
 } // namespace coacd
