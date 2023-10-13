@@ -127,8 +127,7 @@ namespace nanoflann
   inline typename std::enable_if<!has_resize<Container>::value, void>::type
   resize(Container &c, const size_t nElements)
   {
-    if (nElements != c.size())
-      throw std::logic_error("Try to change the size of a std::array.");
+    assert(nElements == c.size() && "Try to change the size of a std::array.");
   }
 
   /**
@@ -291,9 +290,7 @@ namespace nanoflann
      */
     std::pair<IndexType, DistanceType> worst_item() const
     {
-      if (m_indices_dists.empty())
-        throw std::runtime_error("Cannot invoke RadiusResultSet::worst_item() on "
-                                 "an empty list of results.");
+      assert(m_indices_dists.empty() == false && "Cannot invoke RadiusResultSet::worst_item() on an empty list of results.");
       typedef
           typename std::vector<std::pair<IndexType, DistanceType>>::const_iterator
               DistIt;
@@ -325,10 +322,7 @@ namespace nanoflann
   void load_value(FILE *stream, T &value, size_t count = 1)
   {
     size_t read_cnt = fread(&value, sizeof(value), count, stream);
-    if (read_cnt != count)
-    {
-      throw std::runtime_error("Cannot read from file");
-    }
+    assert(read_cnt == count && "Cannot read from file");
   }
 
   template <typename T>
@@ -336,16 +330,10 @@ namespace nanoflann
   {
     size_t size;
     size_t read_cnt = fread(&size, sizeof(size_t), 1, stream);
-    if (read_cnt != 1)
-    {
-      throw std::runtime_error("Cannot read from file");
-    }
+    assert(read_cnt == 1 && "Cannot read from file");
     value.resize(size);
     read_cnt = fread(&value[0], sizeof(T), size, stream);
-    if (read_cnt != size)
-    {
-      throw std::runtime_error("Cannot read from file");
-    }
+    assert(read_cnt == size && "Cannot read from file");
   }
   /** @} */
 
@@ -757,11 +745,7 @@ namespace nanoflann
 
         // use the standard C malloc to allocate memory
         void *m = ::malloc(blocksize);
-        if (!m)
-        {
-          fprintf(stderr, "Failed to allocate memory.\n");
-          throw std::bad_alloc();
-        }
+        assert(m != nullptr && "Failed to allocate memory.");
 
         /* Fill first word of new block with pointer to previous block. */
         static_cast<void **>(m)[0] = base;
@@ -1365,8 +1349,11 @@ namespace nanoflann
       if (this->size(*this) == 0)
         return false;
       if (!BaseClassRef::root_node)
-        throw std::runtime_error(
-            "[nanoflann] findNeighbors() called before building the index.");
+      {
+        assert(false && "[nanoflann] findNeighbors() called before building the index.");
+        return false;
+      }
+      
       float epsError = 1 + searchParams.eps;
 
       distance_vector_t
@@ -1468,9 +1455,7 @@ namespace nanoflann
       else
       {
         const size_t N = dataset.kdtree_get_point_count();
-        if (!N)
-          throw std::runtime_error("[nanoflann] computeBoundingBox() called but "
-                                   "no data points found.");
+        assert(N > 0 && "[nanoflann] computeBoundingBox() called but no data points found.");
         for (int i = 0; i < (DIM > 0 ? DIM : BaseClassRef::dim); ++i)
         {
           bbox[i].low = bbox[i].high = this->dataset_get(*this, 0, i);
@@ -1844,9 +1829,7 @@ namespace nanoflann
       else
       {
         const size_t N = BaseClassRef::m_size;
-        if (!N)
-          throw std::runtime_error("[nanoflann] computeBoundingBox() called but "
-                                   "no data points found.");
+        assert(N > 0 && "[nanoflann] computeBoundingBox() called but no data points found.");
         for (int i = 0; i < (DIM > 0 ? DIM : BaseClassRef::dim); ++i)
         {
           bbox[i].low = bbox[i].high =
@@ -2174,12 +2157,8 @@ namespace nanoflann
         : m_data_matrix(mat)
     {
       const auto dims = row_major ? mat.get().cols() : mat.get().rows();
-      if (size_t(dims) != dimensionality)
-        throw std::runtime_error(
-            "Error: 'dimensionality' must match column count in data matrix");
-      if (DIM > 0 && int(dims) != DIM)
-        throw std::runtime_error(
-            "Data set dimensionality does not match the 'DIM' template argument");
+      assert(size_t(dims) == dimensionality && "Error: 'dimensionality' must match column count in data matrix");
+      assert(DIM <= 0 || int(dims) == DIM && "Data set dimensionality does not match the 'DIM' template argument");
       index =
           new index_t(static_cast<int>(dims), *this /* adaptor */,
                       nanoflann::KDTreeSingleIndexAdaptorParams(leaf_max_size));

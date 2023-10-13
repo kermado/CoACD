@@ -101,10 +101,7 @@ namespace threeyd
                 double enum_y = b1 - b0 * a10;
 
                 // in exact arithmetics, 'det' cannot be negative; but we must take into account floating-point errors
-                if (det < -1e-4)
-                {
-                    throw std::logic_error("Error: det < -1e-4");
-                }
+                assert(det >= -1e-4);
                 if (det < 0.0)
                 {
                     det = 0.0;
@@ -981,7 +978,7 @@ namespace threeyd
                     du2 = orig_du[2];
                     break;
                 default:
-                    throw std::logic_error("Unexpected case value");
+                    assert(false && "Unexpected case value");
                 }
             }
 
@@ -1011,10 +1008,12 @@ namespace threeyd
                     return triline_triline_self_intersect_and_isectline_2(V0, EV1, EV2, EU2, coplanarity, isectpt2,
                                                                           isectpt1);
                 case 3:
-                    throw std::logic_error("duplicated triangles are not allowed");
+                    assert(false && "Duplicated triangles are not allowed");
+                    return false;
 
                 default:
-                    throw std::logic_error("internal error");
+                    assert(false && "Unexpected case value");
+                    return false;
                 }
             }
 
@@ -1088,10 +1087,8 @@ namespace threeyd
 
                     TemplatedVec n{EV1};
                     bool status = n.normalize();
-                    if (!status)
-                    {
-                        throw std::logic_error("Error");
-                    }
+                    assert(status && "Cannot normalize vector");
+
                     // xv1, xv2. xu1, xu2 are coordinates of V1,...,U2 projected onto the triline
                     // in this coordinate system, position of U0 is its origin
                     declfloat xv1 = n.dot(EV1);
@@ -1304,10 +1301,7 @@ namespace threeyd
                     n1 = normal_to_line_and_within_plane(n2, e_v1);
                 }
 
-                if (!n1_exists && !n2_exists)
-                {
-                    throw std::logic_error("unexpected code path was hit");
-                }
+                assert((n1_exists || n2_exists) && "Unexpected code path was hit");
 
                 d1 = -dot(n1, V0); // d1 = -N1.V0
                 /* plane equation 1: N1.X + d1 = 0 */
@@ -1742,9 +1736,7 @@ namespace threeyd
                 }
                 else // CASE 5: 000 [coplanar]
                 {
-                    throw std::logic_error(
-                        "triangles are coplanar (!?). This is an ERROR, as this case should have been dealt with by the "
-                        "caller");
+                    assert(false && "Triangles are coplanar"); // This is an ERROR, as this case should have been dealt with by the caller.
                 }
             }
         };

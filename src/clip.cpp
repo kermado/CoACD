@@ -1,6 +1,6 @@
 #include "clip.h"
-#include "include/CDTUtils.h"
-#include "include/CDT.h"
+#define REAL double
+#include "triangle.h"
 
 namespace coacd
 {
@@ -146,45 +146,19 @@ namespace coacd
 
         int borderN = (int)points.size();
 
-        CDT::Triangulation<double> cdt;
-        try
-        {
-            cdt.insertVertices(
-                points.begin(),
-                points.end(),
-                [](const std::array<double, 2> &p)
-                { return p[0]; },
-                [](const std::array<double, 2> &p)
-                { return p[1]; });
-            cdt.insertEdges(
-                border_edges.begin(),
-                border_edges.end(),
-                [](const std::pair<int, int> &p)
-                { return (int)p.first - 1; },
-                [](const std::pair<int, int> &p)
-                { return (int)p.second - 1; });
-            cdt.eraseSuperTriangle();
-        }
-        catch (const std::runtime_error &e)
-        {
-            return 2;
-        }
+        bool is_success;
+        Triangulate(points, border_edges, border_triangles, nodes, is_success, 0);
 
-        for (size_t i = 0; i < (size_t)cdt.triangles.size(); i++)
-        {
-            border_triangles.push_back({(int)cdt.triangles[i].vertices[0] + 1,
-                                        (int)cdt.triangles[i].vertices[1] + 1,
-                                        (int)cdt.triangles[i].vertices[2] + 1});
-        }
+        if (!is_success)
+            return 2;
 
         for (int i = (int)border.size(); i < borderN; i++)
         {
             double x, y, z;
-            CDT::V2d<double> vertex = cdt.vertices[i];
-            x = R[0][0] * vertex.x + R[1][0] * vertex.y + T[0];
-            y = R[0][1] * vertex.x + R[1][1] * vertex.y + T[1];
-            z = R[0][2] * vertex.x + R[1][2] * vertex.y + T[2];
-            border.push_back({x, y, z});
+            x = R[0][0] * nodes[i][0] + R[1][0] * nodes[i][1] + T[0];
+            y = R[0][1] * nodes[i][0] + R[1][1] * nodes[i][1] + T[1];
+            z = R[0][2] * nodes[i][0] + R[1][2] * nodes[i][1] + T[2];
+            border.push_back({ x, y, z });
         }
 
         return 0;
@@ -776,7 +750,10 @@ namespace coacd
                         }
                     }
                     else
-                        throw runtime_error("Intersection error. Please report this error to sarahwei0210@gmail.com with your input OBJ and log file.");
+                    {
+                        assert(false && "Intersection error"); // Intersection error. Please report this error to sarahwei0210@gmail.com with your input OBJ and log file.
+                        return false;
+                    }
                 }
             }
         }

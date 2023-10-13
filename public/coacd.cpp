@@ -29,19 +29,8 @@ std::vector<Mesh> CoACD(Mesh const &input, double threshold,
   logger::info("merge                   {}", merge);
   logger::info("seed                    {}", seed);
 
-  if (threshold < 0.01) {
-    throw std::runtime_error("CoACD threshold < 0.01 (should be 0.01-1).");
-  } else if (threshold > 1) {
-    throw std::runtime_error("CoACD threshold > 1 (should be 0.01-1).");
-  }
-
-  if (prep_resolution > 1000) {
-    throw std::runtime_error("CoACD prep resolution > 1000, this is probably a "
-                             "bug (should be 30-100).");
-  } else if (prep_resolution < 5) {
-    throw std::runtime_error("CoACD prep resolution < 5, this is probably a "
-                             "bug (should be 20-100).");
-  }
+  assert(threshold >= 0.01 && threshold <= 1.0);
+  assert(prep_resolution >= 5 && prep_resolution <= 1000);
 
   Params params;
   params.input_model = "";
@@ -99,8 +88,6 @@ void set_log_level(std::string_view level) {
     logger::get()->set_level(spdlog::level::err);
   } else if (level == "critical") {
     logger::get()->set_level(spdlog::level::critical);
-  } else {
-    throw std::runtime_error("invalid log level " + std::string(level));
   }
 #endif
 }
