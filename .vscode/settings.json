@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "string_view": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "cmath": "cpp"
     }
 }
