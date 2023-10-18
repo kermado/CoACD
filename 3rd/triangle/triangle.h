@@ -15542,7 +15542,7 @@ struct triangulateio *vorout;
 #else /* not TRILIBRARY */
 
 #ifdef ANSI_DECLARATORS
-int Triangulate(vector<array<double, 2>> vertices, vector<pair<int, int>> segments, 
+int Triangulate(const vector<array<double, 2>>& vertices, const vector<pair<int, int>>& segments, 
                 vector<array<int, 3>>& triangles, vector<array<double, 2>>& nodes, bool& is_success, size_t mode=0)
 #else /* not ANSI_DECLARATORS */
 int Triangulate(vertices, segments, triangles, nodes, is_success, mode)

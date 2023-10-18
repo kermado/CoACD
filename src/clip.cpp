@@ -25,7 +25,7 @@ namespace coacd
         of.close();
     }
 
-    bool CreatePlaneRotationMatrix(vector<vec3d> &border, vector<pair<int, int>> border_edges, vec3d &T, double R[3][3], Plane &plane)
+    bool CreatePlaneRotationMatrix(vector<vec3d> &border, vec3d &T, double R[3][3], Plane &plane)
     {
         int idx0 = 0;
         int idx1;
@@ -114,12 +114,12 @@ namespace coacd
         return true;
     }
 
-    short Triangulation(vector<vec3d> &border, vector<pair<int, int>> border_edges, vector<vec3i> &border_triangles, Plane &plane)
+    short Triangulation(vector<vec3d> &border, const vector<pair<int, int>>& border_edges, vector<vec3i>& border_triangles, Plane &plane)
     {
         double R[3][3];
         vec3d T;
 
-        bool flag = CreatePlaneRotationMatrix(border, border_edges, T, R, plane);
+        bool flag = CreatePlaneRotationMatrix(border, T, R, plane);
         if (!flag)
             return 1;
 
@@ -164,14 +164,14 @@ namespace coacd
         return 0;
     }
 
-    void RemoveOutlierTriangles(vector<vec3d> border, vector<vec3d> overlap, vector<pair<int, int>> border_edges, vector<vec3i> border_triangles, int oriN,
-                                map<int, int> &vertex_map, vector<vec3d> &final_border, vector<vec3i> &final_triangles)
+    void RemoveOutlierTriangles(const vector<vec3d>& border, const vector<vec3d>& overlap, const vector<pair<int, int>>& border_edges, const vector<vec3i>& border_triangles, int oriN,
+                                unordered_map<int, int> &vertex_map, vector<vec3d> &final_border, vector<vec3i> &final_triangles)
     {
         deque<pair<int, int>> BFS_edges(border_edges.begin(), border_edges.end());
-        map<pair<int, int>, pair<int, int>> edge_map;
-        map<pair<int, int>, bool> border_map;
-        map<pair<int, int>, bool> same_edge_map;
-        map<int, bool> overlap_map;
+        unordered_map<pair<int, int>, pair<int, int>, pair_hash> edge_map;
+        unordered_map<pair<int, int>, bool, pair_hash> border_map;
+        unordered_map<pair<int, int>, bool, pair_hash> same_edge_map;
+        unordered_map<int, bool> overlap_map;
         const int v_lenth = (int)border.size();
         const int f_lenth = (int)border_triangles.size();
         bool *add_vertex = new bool[v_lenth]();
@@ -388,7 +388,7 @@ namespace coacd
         vector<vec3d> overlap;
         vector<vec3i> border_triangles, final_triangles;
         vector<pair<int, int>> border_edges;
-        map<int, int> border_map;
+        unordered_map<int, int> border_map;
         vector<vec3d> final_border;
 
         const int N = (int)mesh.points.size();
@@ -396,8 +396,8 @@ namespace coacd
         bool *pos_map = new bool[N]();
         bool *neg_map = new bool[N]();
 
-        map<pair<int, int>, int> edge_map;
-        map<int, int> vertex_map;
+        unordered_map<pair<int, int>, int, pair_hash> edge_map;
+        unordered_map<int, int> vertex_map;
 
         for (int i = 0; i < (int)mesh.triangles.size(); i++)
         {

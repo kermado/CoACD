@@ -8,6 +8,8 @@
 
 namespace coacd
 {
+    thread_local std::mt19937 random_engine;
+
     void ManifoldPreprocess(Params &params, Model &m)
     {
 #ifdef PREPROCESS
@@ -24,6 +26,7 @@ namespace coacd
         Model merge;
         merge.points.insert(merge.points.end(), ch1.points.begin(), ch1.points.end());
         merge.points.insert(merge.points.end(), ch2.points.begin(), ch2.points.end());
+        merge.triangles.reserve(ch1.triangles.size() + ch2.triangles.size());
         merge.triangles.insert(merge.triangles.end(), ch1.triangles.begin(), ch1.triangles.end());
         for (int i = 0; i < (int)ch2.triangles.size(); i++)
             merge.triangles.push_back({int(ch2.triangles[i][0] + ch1.points.size()),
@@ -196,6 +199,8 @@ namespace coacd
 
     vector<Model> Compute(Model &mesh, Params &params)
     {
+        random_engine.seed(params.seed);
+
         vector<Model> InputParts = {mesh};
         vector<Model> parts, pmeshs;
 #ifdef _OPENMP
@@ -224,7 +229,7 @@ namespace coacd
             for (int p = 0; p < (int)InputParts.size(); p++)
             {
                 if (p % ((int)InputParts.size() / 10 + 1) == 0)
-                    logger::info("Processing [{}%]", p * 100.0 / (int)InputParts.size());
+                    logger::info("Processing [{:.1f}%]", p * 100.0 / (int)InputParts.size());
 
                 Model pmesh = InputParts[p], pCH;
                 Plane bestplane;
@@ -289,7 +294,7 @@ namespace coacd
 #endif
                 }
             }
-            logger::info("Processing [100%]");
+            logger::info("Processing [100.0%]");
             InputParts.clear();
             InputParts = tmp;
             tmp.clear();

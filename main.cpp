@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 
   // Model files
   string input_model;
-  params.seed = (unsigned)time(NULL);
+  params.seed = 0U;
 
   // args
   for (int i = 0; i < argc; ++i)

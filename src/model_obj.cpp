@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "model_obj.h"
+#include "process.h"
 #include "quickhull/QuickHull.hpp"
 #include "btConvexHull/btConvexHullComputer.h"
 #include "nanoflann.hpp"
@@ -106,26 +107,35 @@ namespace coacd
         bool flag = true;
         quickhull::QuickHull<float> qh; // Could be double as well
         vector<quickhull::Vector3<float>> pointCloud;
+        pointCloud.reserve(points.size());
+
         // Add points to point cloud
         for (int i = 0; i < (int)points.size(); i++)
         {
-            pointCloud.push_back(quickhull::Vector3<float>(points[i][0], points[i][1], points[i][2]));
+            pointCloud.emplace_back((float)points[i][0], (float)points[i][1], (float)points[i][2]);
         }
 
-        auto hull = qh.getConvexHull(pointCloud, true, false, flag);
+        quickhull::ConvexHull<float> hull = qh.getConvexHull(pointCloud, true, false, flag);
         if (!flag)
         {
             // backup convex hull algorithm, stable but slow
             ComputeVCH(convex);
             return;
         }
+
         const auto &indexBuffer = hull.getIndexBuffer();
         const auto &vertexBuffer = hull.getVertexBuffer();
-        for (int i = 0; i < (int)vertexBuffer.size(); i++)
+
+        const size_t vc = vertexBuffer.size();
+        convex.points.reserve(vc);
+        for (size_t i(0); i < vc; i++)
         {
             convex.points.push_back({vertexBuffer[i].x, vertexBuffer[i].y, vertexBuffer[i].z});
         }
-        for (int i = 0; i < (int)indexBuffer.size(); i += 3)
+
+        const size_t ic = indexBuffer.size();
+        convex.triangles.reserve(ic / 3);
+        for (size_t i(0); i < ic; i += 3)
         {
             convex.triangles.push_back({(int)indexBuffer[i + 2], (int)indexBuffer[i + 1], (int)indexBuffer[i]});
         }
@@ -244,7 +254,7 @@ namespace coacd
             edge_map[edge1] = true;
     }
 
-    bool ComputeOverlapFace(Model &convex1, Model &convex2, Plane &plane)
+    bool ComputeOverlapFace(const Model &convex1, const Model &convex2, Plane &plane)
     {
         bool flag;
         for (int i = 0; i < (int)convex1.triangles.size(); i++)
@@ -257,13 +267,15 @@ namespace coacd
             double a = (p2[1] - p1[1]) * (p3[2] - p1[2]) - (p2[2] - p1[2]) * (p3[1] - p1[1]);
             double b = (p2[2] - p1[2]) * (p3[0] - p1[0]) - (p2[0] - p1[0]) * (p3[2] - p1[2]);
             double c = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0]);
-            p.a = a / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
-            p.b = b / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
-            p.c = c / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
-            p.d = 0 - (p.a * p1[0] + p.b * p1[1] + p.c * p1[2]);
+            const double l = sqrt(a * a + b * b + c * c);
+            p.a = a / l;
+            p.b = b / l;
+            p.c = c / l;
+            p.d = -(p.a * p1[0] + p.b * p1[1] + p.c * p1[2]);
 
+            const int end1 = (int)convex1.points.size();
             short side1 = 0;
-            for (int j = 0; j < (int)convex1.points.size(); j++)
+            for (int j = 0; j < end1; j++)
             {
                 short s = p.Side(convex1.points[j], 1e-8);
                 if (s != 0)
@@ -274,7 +286,8 @@ namespace coacd
                 }
             }
 
-            for (int j = 0; j < (int)convex2.points.size(); j++)
+            const int end2 = (int)convex2.points.size();
+            for (int j = 0; j < end2; j++)
             {
                 short s = p.Side(convex2.points[j], 1e-8);
                 if (!flag || s == side1)
@@ -315,7 +328,6 @@ namespace coacd
         if (base != 0)
             resolution = size_t(max(1000, int(resolution * (aObj / base))));
 
-        srand(seed);
         for (int i = 0; i < (int)triangles.size(); i++)
         {
             if (flag && plane.Side(points[triangles[i][0]], 1e-3) == 0 &&
@@ -331,16 +343,18 @@ namespace coacd
             else
                 N = max(int(i % 2 == 0), int(resolution / aObj * area));
 
-            int seed = rand() % 1000;
+            std::uniform_int_distribution<int> seeder(0, 1000);
+            int seed = seeder(coacd::random_engine);
             float r[2];
             for (int k = 0; k < N; k++)
             {
                 double a, b;
                 if (k % 3 == 0)
                 {
+                    std::uniform_real_distribution<double> uniform(0.0, 1.0);
                     //// random sample
-                    a = rand() / double(RAND_MAX);
-                    b = rand() / double(RAND_MAX);
+                    a = uniform(coacd::random_engine);
+                    b = uniform(coacd::random_engine);
                 }
                 else
                 {

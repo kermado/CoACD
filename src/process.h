@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <random>
 #include <fstream>
 #include <vector>
 #include <math.h>
@@ -19,6 +20,7 @@
 
 namespace coacd
 {
+  extern thread_local std::mt19937 random_engine;
 
   void ManifoldPreprocess(Params &params, Model &m);
   void MergeCH(Model &ch1, Model &ch2, Model &ch);
@@ -35,7 +37,7 @@ namespace coacd
       neighbors.push_back(second);
   }
 
-  inline int32_t FindMinimumElement(const vector<double> d, double *const m, const int32_t begin, const int32_t end)
+  inline int32_t FindMinimumElement(const vector<double>& d, double *const m, const int32_t begin, const int32_t end)
   {
     int32_t idx = -1;
     double min = (std::numeric_limits<double>::max)();

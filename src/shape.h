@@ -62,46 +62,50 @@ namespace coacd
     {
     public:
         double a, b, c, d;
-        bool pFlag;       // whether three point form exists
         vec3d p0, p1, p2; // three point form
-        short CutSide(vec3d p0, vec3d p1, vec3d p2, Plane plane);
-        short BoolSide(vec3d p);
-        short Side(vec3d p, double eps = 1e-6);
-        bool IntersectSegment(vec3d p1, vec3d p2, vec3d &pi, double eps = 1e-6);
-        Plane();
-        Plane(double _a, double _b, double _c, double _d)
-        {
-            a = _a;
-            b = _b;
-            c = _c;
-            d = _d;
-            pFlag = false;
-        }
+        bool pFlag;       // whether three point form exists
+        inline short CutSide(vec3d p0, vec3d p1, vec3d p2, Plane plane);
+        inline short BoolSide(const vec3d& p) const;
+        inline short Side(const vec3d& p, double eps = 1e-6) const;
+        inline bool IntersectSegment(const vec3d& p1, const vec3d& p2, vec3d &pi, const double eps = 1e-6);
+        inline Plane() : pFlag(false) {}
+        inline Plane(double _a, double _b, double _c, double _d) : a(_a), b(_b), c(_c), d(_d), pFlag(false) {}
     };
 
-    bool SamePointDetect(vec3d p0, vec3d p1, float eps=1e-5);
-    bool SameVectorDirection(vec3d v, vec3d w);
-    vec3d CrossProduct(vec3d v, vec3d w);
-    vec3d CalFaceNormal(vec3d p1, vec3d p2, vec3d p3);
+    inline bool SamePointDetect(const vec3d& p0, const vec3d& p1, const double eps = 1e-5)
+    {
+        return fabs(p0[0] - p1[0]) < eps && fabs(p0[1] - p1[1]) < eps && fabs(p0[2] - p1[2]) < eps;
+    }
+
+    inline bool SameVectorDirection(const vec3d& v, const vec3d& w)
+    {
+        return (v[0] * w[0] + v[1] * w[1] + v[2] * w[2]) > 0.0;
+    }
+
+    vec3d CrossProduct(const vec3d& v, const vec3d& w);
+
+    inline vec3d CalFaceNormal(const vec3d& p1, const vec3d& p2, const vec3d& p3)
+    {
+        vec3d v, w;
+        v[0] = p2[0] - p1[0];
+        v[1] = p2[1] - p1[1];
+        v[2] = p2[2] - p1[2];
+        w[0] = p3[0] - p1[0];
+        w[1] = p3[1] - p1[1];
+        w[2] = p3[2] - p1[2];
+
+        const vec3d n = CrossProduct(v, w);
+        const double l = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+        return { n[0] / l, n[1] / l, n[2] / l };
+    }
+
     double Area(vec3d p0, vec3d p1, vec3d p2);
     double Volume(vec3d p1, vec3d p2, vec3d p3);
     void Diagonalize(const array<array<double, 3>, 3>& A, array<array<double, 3>, 3>& Q, array<array<double, 3>, 3>& D);
 
-    inline bool SameVectorDirection(vec3d v, vec3d w)
+    inline vec3d CrossProduct(const vec3d& v, const vec3d& w)
     {
-        if (v[0] * w[0] + v[1] * w[1] + v[2] * w[2] > 0)
-            return true;
-        return false;
-    }
-
-    inline vec3d CrossProduct(vec3d v, vec3d w)
-    {
-        vec3d res;
-        res[0] = v[1] * w[2] - v[2] * w[1];
-        res[1] = v[2] * w[0] - v[0] * w[2];
-        res[2] = v[0] * w[1] - v[1] * w[0];
-
-        return res;
+        return { v[1] * w[2] - v[2] * w[1], v[2] * w[0] - v[0] * w[2], v[0] * w[1] - v[1] * w[0] };
     }
 
     inline short Plane::CutSide(vec3d p0, vec3d p1, vec3d p2, Plane plane)
@@ -112,36 +116,31 @@ namespace coacd
         return 1;
     }
 
-    inline short Plane::BoolSide(vec3d p)
+    inline short Plane::BoolSide(const vec3d& p) const
     {
-        double res = p[0] * a + p[1] * b + p[2] * c + d;
-        if (res > 0)
-            return 1;
-        else
-            return -1;
+        const double res = p[0] * a + p[1] * b + p[2] * c + d;
+        return short((res > 0.0) ? 1 : -1);
     }
 
-    inline short Plane::Side(vec3d p, double eps)
+    inline short Plane::Side(const vec3d& p, double eps) const
     {
-        double res = p[0] * a + p[1] * b + p[2] * c + d;
+        const double res = p[0] * a + p[1] * b + p[2] * c + d;
         if (res > eps)
             return 1;
-        else if (res < -1 * eps)
+        else if (res < -eps)
             return -1;
         return 0;
     }
 
-    inline bool Plane::IntersectSegment(vec3d p1, vec3d p2, vec3d &pi, double eps)
+    inline bool Plane::IntersectSegment(const vec3d& p1, const vec3d& p2, vec3d &pi, const double eps)
     {
         pi[0] = (p1[0] * b * p2[1] + p1[0] * c * p2[2] + p1[0] * d - p2[0] * b * p1[1] - p2[0] * c * p1[2] - p2[0] * d) / (a * p2[0] - a * p1[0] + b * p2[1] - b * p1[1] + c * p2[2] - c * p1[2]);
         pi[1] = (a * p2[0] * p1[1] + c * p1[1] * p2[2] + p1[1] * d - a * p1[0] * p2[1] - c * p1[2] * p2[1] - p2[1] * d) / (a * p2[0] - a * p1[0] + b * p2[1] - b * p1[1] + c * p2[2] - c * p1[2]);
         pi[2] = (a * p2[0] * p1[2] + b * p2[1] * p1[2] + p1[2] * d - a * p1[0] * p2[2] - b * p1[1] * p2[2] - p2[2] * d) / (a * p2[0] - a * p1[0] + b * p2[1] - b * p1[1] + c * p2[2] - c * p1[2]);
 
-        if (min(p1[0] - eps, p2[0] - eps) <= pi[0] && pi[0] <= max(p1[0] + eps, p2[0] + eps) &&
-            min(p1[1] - eps, p2[1] - eps) <= pi[1] && pi[1] <= max(p1[1] + eps, p2[1] + eps) &&
-            min(p1[2] - eps, p2[2] - eps) <= pi[2] && pi[2] <= max(p1[2] + eps, p2[2] + eps))
-            return true;
-        return false;
+        return min(p1[0] - eps, p2[0] - eps) <= pi[0] && pi[0] <= max(p1[0] + eps, p2[0] + eps) &&
+               min(p1[1] - eps, p2[1] - eps) <= pi[1] && pi[1] <= max(p1[1] + eps, p2[1] + eps) &&
+               min(p1[2] - eps, p2[2] - eps) <= pi[2] && pi[2] <= max(p1[2] + eps, p2[2] + eps);
     }
 
     template <typename T>
@@ -162,12 +161,8 @@ namespace coacd
         //  "if/else's" are actually solved at compile time.
         inline T kdtree_get_pt(const size_t idx, const size_t dim) const
         {
-            if (dim == 0)
-                return pts[idx].x;
-            else if (dim == 1)
-                return pts[idx].y;
-            else
-                return pts[idx].z;
+            const T* ptr = (T* )(pts.data() + idx);
+            return *(ptr + dim);
         }
 
         // Optional bounding-box computation: return false to default to a standard bbox computation loop.
@@ -178,10 +173,11 @@ namespace coacd
     };
 
     template <typename T>
-    void vec2PointCloud(PointCloud<T> &point, vector<vec3d> V)
+    void vec2PointCloud(PointCloud<T> &point, const vector<vec3d>& V)
     {
-        point.pts.resize(V.size());
-        for (size_t i = 0; i < V.size(); i++)
+        const size_t size = V.size();
+        point.pts.resize(size);
+        for (size_t i = 0; i < size; i++)
         {
             point.pts[i].x = V[i][0];
             point.pts[i].y = V[i][1];

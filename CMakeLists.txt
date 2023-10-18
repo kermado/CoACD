@@ -31,3 +31,8 @@ file(GLOB_RECURSE COACD_SRC "src/*.cc" "src/*.cpp" "public/*.cpp")
 add_library(coacd STATIC ${COACD_SRC})
 target_include_directories(coacd PUBLIC public)
 target_include_directories(coacd PRIVATE 3rd/triangle)
+
+if (NOT DEFINED WASM)
+    add_executable(main main.cpp)
+    target_link_libraries(main coacd)
+endif()

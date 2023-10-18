@@ -2,42 +2,6 @@
 
 namespace coacd
 {
-
-    Plane::Plane()
-    {
-        pFlag = false;
-    }
-
-    bool SamePointDetect(vec3d p0, vec3d p1, float eps)
-    {
-        double dx, dy, dz;
-        dx = fabs(p0[0] - p1[0]);
-        dy = fabs(p0[1] - p1[1]);
-        dz = fabs(p0[2] - p1[2]);
-        if (dx < eps && dy < eps && dz < eps)
-            return true;
-        return false;
-    }
-
-    vec3d CalFaceNormal(vec3d p1, vec3d p2, vec3d p3)
-    {
-        vec3d v, w, n, normal;
-        v[0] = p2[0] - p1[0];
-        v[1] = p2[1] - p1[1];
-        v[2] = p2[2] - p1[2];
-        w[0] = p3[0] - p1[0];
-        w[1] = p3[1] - p1[1];
-        w[2] = p3[2] - p1[2];
-
-        n = CrossProduct(v, w);
-
-        normal[0] = n[0] / sqrt(pow(n[0], 2) + pow(n[1], 2) + pow(n[2], 2));
-        normal[1] = n[1] / sqrt(pow(n[0], 2) + pow(n[1], 2) + pow(n[2], 2));
-        normal[2] = n[2] / sqrt(pow(n[0], 2) + pow(n[1], 2) + pow(n[2], 2));
-
-        return normal;
-    }
-
     double Area(vec3d p0, vec3d p1, vec3d p2)
     {
         return 0.5 * sqrt(pow(p1[0] * p0[1] - p2[0] * p0[1] - p0[0] * p1[1] + p2[0] * p1[1] + p0[0] * p2[1] - p1[0] * p2[1], 2) +
