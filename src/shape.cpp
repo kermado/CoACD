@@ -4,9 +4,10 @@ namespace coacd
 {
     double Area(vec3d p0, vec3d p1, vec3d p2)
     {
-        return 0.5 * sqrt(pow(p1[0] * p0[1] - p2[0] * p0[1] - p0[0] * p1[1] + p2[0] * p1[1] + p0[0] * p2[1] - p1[0] * p2[1], 2) +
-                          pow(p1[0] * p0[2] - p2[0] * p0[2] - p0[0] * p1[2] + p2[0] * p1[2] + p0[0] * p2[2] - p1[0] * p2[2], 2) +
-                          pow(p1[1] * p0[2] - p2[1] * p0[2] - p0[1] * p1[2] + p2[1] * p1[2] + p0[1] * p2[2] - p1[1] * p2[2], 2));
+        const double x = p1[0] * p0[1] - p2[0] * p0[1] - p0[0] * p1[1] + p2[0] * p1[1] + p0[0] * p2[1] - p1[0] * p2[1];
+        const double y = p1[0] * p0[2] - p2[0] * p0[2] - p0[0] * p1[2] + p2[0] * p1[2] + p0[0] * p2[2] - p1[0] * p2[2];
+        const double z = p1[1] * p0[2] - p2[1] * p0[2] - p0[1] * p1[2] + p2[1] * p1[2] + p0[1] * p2[2] - p1[1] * p2[2];
+        return 0.5 * sqrt(x*x + y*y + z*z);
     }
 
     double Volume(vec3d p1, vec3d p2, vec3d p3)

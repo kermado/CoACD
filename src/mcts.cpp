@@ -608,25 +608,40 @@ namespace coacd
         }
     }
 
-    void ComputeAxesAlignedClippingPlanes(Model &m, const int mcts_nodes, vector<Plane> &planes, bool shuffle)
+    void ComputeAxesAlignedClippingPlanes(const Model &m, const int mcts_nodes, vector<Plane> &planes, bool shuffle)
     {
-        double *bbox = m.GetBBox();
-        double interval;
-        double eps = 1e-6;
-        interval = max(0.01, abs(bbox[0] - bbox[1]) / ((double)mcts_nodes + 1));
-        for (double i = bbox[0] + max(0.015, interval); i <= bbox[1] - max(0.015, interval) + eps; i += interval)
+        const double *bbox = m.GetBBox();
+        const double eps = 1e-6;
+        const double span = (double)(mcts_nodes + 1);
+        const double interval1 = max(0.01, abs(bbox[0] - bbox[1]) / span);
+        const double interval2 = max(0.01, abs(bbox[2] - bbox[3]) / span);
+        const double interval3 = max(0.01, abs(bbox[4] - bbox[5]) / span);
+        const double padd1 = max(0.015, interval1);
+        const double padd2 = max(0.015, interval2);
+        const double padd3 = max(0.015, interval3);
+        const double start1 = bbox[0] + padd1;
+        const double start2 = bbox[2] + padd2;
+        const double start3 = bbox[4] + padd3;
+        const double end1 = bbox[1] - padd1 + eps;
+        const double end2 = bbox[3] - padd2 + eps;
+        const double end3 = bbox[5] - padd3 + eps;
+
+        const int count1 = max(0, (int)((end1 - start1) / interval1));
+        const int count2 = max(0, (int)((end2 - start2) / interval2));
+        const int count3 = max(0, (int)((end3 - start3) / interval3));
+        planes.reserve(planes.size() + count1 + count2 + count3);
+
+        for (double i = start1; i <= end1; i += interval1)
         {
-            planes.push_back(Plane(1.0, 0.0, 0.0, -i));
+            planes.emplace_back(1.0, 0.0, 0.0, -i);
         }
-        interval = max(0.01, abs(bbox[2] - bbox[3]) / ((double)mcts_nodes + 1));
-        for (double i = bbox[2] + max(0.015, interval); i <= bbox[3] - max(0.015, interval) + eps; i += interval)
+        for (double i = start2; i <= end2; i += interval2)
         {
-            planes.push_back(Plane(0.0, 1.0, 0.0, -i));
+            planes.emplace_back(0.0, 1.0, 0.0, -i);
         }
-        interval = max(0.01, abs(bbox[4] - bbox[5]) / ((double)mcts_nodes + 1));
-        for (double i = bbox[4] + max(0.015, interval); i <= bbox[5] - max(0.015, interval) + eps; i += interval)
+        for (double i = start3; i <= end3; i += interval3)
         {
-            planes.push_back(Plane(0.0, 0.0, 1.0, -i));
+            planes.emplace_back(0.0, 0.0, 1.0, -i);
         }
 
         if (shuffle)

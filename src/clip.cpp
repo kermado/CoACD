@@ -34,7 +34,10 @@ namespace coacd
 
         for (int i = 1; i < (int)border.size(); i++)
         {
-            double dist = sqrt(pow(border[idx0][0] - border[i][0], 2) + pow(border[idx0][1] - border[i][1], 2) + pow(border[idx0][2] - border[i][2], 2));
+            const double dx = border[idx0][0] - border[i][0];
+            const double dy = border[idx0][1] - border[i][1];
+            const double dz = border[idx0][2] - border[i][2];
+            double dist = sqrt(dx * dx + dy * dy + dz * dz);
             if (dist > 0.01)
             {
                 flag = 1;
@@ -62,7 +65,7 @@ namespace coacd
             BC[2] = p2[2] - p1[2];
 
             double dot_product = AB[0] * BC[0] + AB[1] * BC[1] + AB[2] * BC[2];
-            double res = dot_product / (sqrt(pow(AB[0], 2) + pow(AB[1], 2) + pow(AB[2], 2)) * sqrt(pow(BC[0], 2) + pow(BC[1], 2) + pow(BC[2], 2)));
+            double res = dot_product / (sqrt(AB[0] * AB[0] + AB[1] * AB[1] + AB[2] * AB[2]) * sqrt(BC[0] * BC[0] + BC[1] * BC[1] + BC[2] * BC[2]));
             if (fabs(fabs(res) - 1) > 1e-6 && fabs(res) < INF) // AB not \\ BC, dot product != 1
             {
                 flag = 1;
@@ -93,23 +96,36 @@ namespace coacd
 
         // rotation matrix
         double eps = 0.0;
-        R[0][0] = (p0[0] - p1[0]) / (sqrt(pow(p0[0] - p1[0], 2) + pow(p0[1] - p1[1], 2) + pow(p0[2] - p1[2], 2)) + eps);
-        R[0][1] = (p0[1] - p1[1]) / (sqrt(pow(p0[0] - p1[0], 2) + pow(p0[1] - p1[1], 2) + pow(p0[2] - p1[2], 2)) + eps);
-        R[0][2] = (p0[2] - p1[2]) / (sqrt(pow(p0[0] - p1[0], 2) + pow(p0[1] - p1[1], 2) + pow(p0[2] - p1[2], 2)) + eps);
+        const double pd0 = p0[0] - p1[0];
+        const double pd1 = p0[1] - p1[1];
+        const double pd2 = p0[2] - p1[2];
+
+        const double pd0_2 = pd0 * pd0;
+        const double pd1_2 = pd1 * pd1;
+        const double pd2_2 = pd2 * pd2;
+
+        const double a = sqrt(pd0_2 + pd1_2 + pd2_2) + eps;
+        R[0][0] = pd0 / a;
+        R[0][1] = pd1 / a;
+        R[0][2] = pd2 / a;
 
         t0 = (p2[2] - p0[2]) * R[0][1] - (p2[1] - p0[1]) * R[0][2];
         t1 = (p2[0] - p0[0]) * R[0][2] - (p2[2] - p0[2]) * R[0][0];
         t2 = (p2[1] - p0[1]) * R[0][0] - (p2[0] - p0[0]) * R[0][1];
-        R[2][0] = t0 / (sqrt(pow(t0, 2) + pow(t1, 2) + pow(t2, 2)) + eps);
-        R[2][1] = t1 / (sqrt(pow(t0, 2) + pow(t1, 2) + pow(t2, 2)) + eps);
-        R[2][2] = t2 / (sqrt(pow(t0, 2) + pow(t1, 2) + pow(t2, 2)) + eps);
+
+        const double b = sqrt(t0 * t0 + t1 * t1 + t2 * t2) + eps;
+        R[2][0] = t0 / b;
+        R[2][1] = t1 / b;
+        R[2][2] = t2 / b;
 
         t0 = R[2][2] * R[0][1] - R[2][1] * R[0][2];
         t1 = R[2][0] * R[0][2] - R[2][2] * R[0][0];
         t2 = R[2][1] * R[0][0] - R[2][0] * R[0][1];
-        R[1][0] = t0 / (sqrt(pow(t0, 2) + pow(t1, 2) + pow(t2, 2)) + eps);
-        R[1][1] = t1 / (sqrt(pow(t0, 2) + pow(t1, 2) + pow(t2, 2)) + eps);
-        R[1][2] = t2 / (sqrt(pow(t0, 2) + pow(t1, 2) + pow(t2, 2)) + eps);
+
+        const double c = sqrt(t0 * t0 + t1 * t1 + t2 * t2) + eps;
+        R[1][0] = t0 / c;
+        R[1][1] = t1 / c;
+        R[1][2] = t2 / c;
 
         return true;
     }
@@ -381,25 +397,79 @@ namespace coacd
         delete[] remove_map;
     }
 
-    bool Clip(const Model &mesh, Model &pos, Model &neg, Plane &plane, double &cut_area, bool foo)
+    struct Cache
     {
-        Model t = mesh;
         vector<vec3d> border;
         vector<vec3d> overlap;
         vector<vec3i> border_triangles, final_triangles;
         vector<pair<int, int>> border_edges;
         unordered_map<int, int> border_map;
         vector<vec3d> final_border;
-
-        const int N = (int)mesh.points.size();
-        int idx = 0;
-        bool *pos_map = new bool[N]();
-        bool *neg_map = new bool[N]();
-
+        vector<bool> pos_map;
+        vector<bool> neg_map;
+        vector<int> pos_proj;
+        vector<int> neg_proj;
         unordered_map<pair<int, int>, int, pair_hash> edge_map;
         unordered_map<int, int> vertex_map;
 
-        for (int i = 0; i < (int)mesh.triangles.size(); i++)
+        static Cache& get()
+        {
+            static Cache instance;
+            return instance;
+        }
+
+        void clear()
+        {
+            border.clear();
+            overlap.clear();
+            border_triangles.clear();
+            final_triangles.clear();
+            border_edges.clear();
+            border_map.clear();
+            final_border.clear();
+            edge_map.clear();
+            vertex_map.clear();
+        }
+
+        void prepare(const unsigned int n)
+        {
+            clear();
+            pos_map.resize(n);
+            neg_map.resize(n);
+            pos_proj.resize(n);
+            neg_proj.resize(n);
+        }
+    };
+
+    bool Clip(const Model &mesh, Model &pos, Model &neg, Plane &plane, double &cut_area, bool foo)
+    {
+        const int N = mesh.points.size();
+
+        Cache& cache = Cache::get();
+        cache.prepare(N);
+        vector<vec3d>& border = cache.border;
+        vector<vec3d>& overlap = cache.overlap;
+        vector<vec3i>& border_triangles = cache.border_triangles;
+        vector<vec3i>& final_triangles = cache.final_triangles;
+        vector<pair<int, int>>& border_edges = cache.border_edges;
+        unordered_map<int, int>& border_map = cache.border_map;
+        vector<vec3d>& final_border = cache.final_border;
+        vector<bool>& pos_map = cache.pos_map;
+        vector<bool>& neg_map = cache.neg_map;
+        vector<int>& pos_proj = cache.pos_proj;
+        vector<int>& neg_proj = cache.neg_proj;
+        unordered_map<pair<int, int>, int, pair_hash>& edge_map = cache.edge_map;
+        unordered_map<int, int>& vertex_map = cache.vertex_map;
+
+        for (int i = 0; i < N; ++i) { pos_map[i] = false; }
+        for (int i = 0; i < N; ++i) { neg_map[i] = false; }
+        std::memset(pos_proj.data(), 0, sizeof(int) * N);
+        std::memset(neg_proj.data(), 0, sizeof(int) * N);
+
+        int idx = 0;
+
+        const int triangle_count = (int)mesh.triangles.size();
+        for (int i = 0; i < triangle_count; i++)
         {
             int id0, id1, id2;
             id0 = mesh.triangles[i][0];
@@ -782,8 +852,6 @@ namespace coacd
         double neg_x_min = INF, neg_x_max = -INF, neg_y_min = INF, neg_y_max = -INF, neg_z_min = INF, neg_z_max = -INF;
 
         int pos_idx = 0, neg_idx = 0;
-        int *pos_proj = new int[N]();
-        int *neg_proj = new int[N]();
         for (int i = 0; i < N; i++)
         {
             if (pos_map[i] == true)
@@ -896,10 +964,6 @@ namespace coacd
                                      neg_N + border_map[final_triangles[i][1]] - 1,
                                      neg_N + border_map[final_triangles[i][0]] - 1});
         }
-        delete[] pos_proj;
-        delete[] neg_proj;
-        delete[] neg_map;
-        delete[] pos_map;
 
         return true;
     }

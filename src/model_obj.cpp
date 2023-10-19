@@ -54,7 +54,7 @@ namespace coacd
             BC[2] = p2[2] - p1[2];
 
             double dot_product = AB[0] * BC[0] + AB[1] * BC[1] + AB[2] * BC[2];
-            double res = dot_product / (sqrt(pow(AB[0], 2) + pow(AB[1], 2) + pow(AB[2], 2)) * sqrt(pow(BC[0], 2) + pow(BC[1], 2) + pow(BC[2], 2)));
+            double res = dot_product / (sqrt(AB[0] * AB[0] + AB[1] * AB[1] + AB[2] * AB[2]) * sqrt(BC[0] * BC[0] + BC[1] * BC[1] + BC[2] * BC[2]));
             if (fabs(fabs(res) - 1) > 1e-6 && fabs(res) < INF) // AB not \\ BC, dot product != 1
             {
                 flag = 1;
@@ -71,9 +71,13 @@ namespace coacd
         double a = (p1[1] - p0[1]) * (p2[2] - p0[2]) - (p1[2] - p0[2]) * (p2[1] - p0[1]);
         double b = (p1[2] - p0[2]) * (p2[0] - p0[0]) - (p1[0] - p0[0]) * (p2[2] - p0[2]);
         double c = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-        p.a = a / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
-        p.b = b / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
-        p.c = c / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
+        double a2 = a * a;
+        double b2 = b * b;
+        double c2 = c * c;
+        double l = sqrt(a2 + b2 + c2);
+        p.a = a / l;
+        p.b = b / l;
+        p.c = c / l;
         p.d = 0 - (p.a * p1[0] + p.b * p1[1] + p.c * p1[2]);
 
         for (int i = 0; i < (int)points.size(); i++)

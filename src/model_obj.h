@@ -84,6 +84,7 @@ namespace coacd
         void ExtractPointSet(vector<vec3d> &samples, vector<int> &sample_tri_ids, unsigned int seed = 1235, size_t resolution = 2000, double base = 0, bool flag = false, Plane plane = Plane(0, 0, 0, 0));
         vector<vec3d> GetPoints(size_t resolution);
         double *GetBBox() { return bbox; }
+        const double* GetBBox() const { return bbox; }
         void ComputeCH(Model &convex);
         void ComputeVCH(Model &convex);
     };

@@ -4,7 +4,7 @@
 namespace coacd
 {
 
-  constexpr double Pi = 3.14159265;
+  constexpr double Pi = 3.14159265358979323846264338327950288;
 
   double ComputeRv(Model &tmesh1, Model &tmesh2, double k, double epsilon)
   {
