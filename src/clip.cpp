@@ -180,53 +180,119 @@ namespace coacd
         return 0;
     }
 
+    struct TrianglesCache
+    {
+        std::deque<pair<int, int>> BFS_edges;
+        std::unordered_map<pair<int, int>, pair<int, int>, pair_hash> edge_map;
+        std::unordered_set<pair<int, int>, pair_hash> border_map;
+        std::unordered_set<pair<int, int>, pair_hash> same_edge_map;
+        std::unordered_set<int> overlap_map;
+        std::vector<bool> add_vertex;
+        std::vector<bool> remove_map;
+
+        TrianglesCache()
+        : BFS_edges(),
+          edge_map(),
+          border_map(),
+          same_edge_map(),
+          overlap_map(),
+          add_vertex(),
+          remove_map()
+        {
+            // Nothing to do.
+        }
+
+        static TrianglesCache& get()
+        {
+            static TrianglesCache instance;
+            return instance;
+        }
+
+        void clear()
+        {
+            BFS_edges.clear();
+            edge_map.clear();
+            border_map.clear();
+            same_edge_map.clear();
+            overlap_map.clear();
+        }
+
+        void prepare(const int v_length, const int f_length)
+        {
+            clear();
+            add_vertex.resize(v_length);
+            remove_map.resize(f_length);
+        }
+    };
+
     void RemoveOutlierTriangles(const vector<vec3d>& border, const vector<vec3d>& overlap, const vector<pair<int, int>>& border_edges, const vector<vec3i>& border_triangles, int oriN,
                                 unordered_map<int, int> &vertex_map, vector<vec3d> &final_border, vector<vec3i> &final_triangles)
     {
-        deque<pair<int, int>> BFS_edges(border_edges.begin(), border_edges.end());
-        unordered_map<pair<int, int>, pair<int, int>, pair_hash> edge_map;
-        unordered_map<pair<int, int>, bool, pair_hash> border_map;
-        unordered_map<pair<int, int>, bool, pair_hash> same_edge_map;
-        unordered_map<int, bool> overlap_map;
-        const int v_lenth = (int)border.size();
-        const int f_lenth = (int)border_triangles.size();
-        bool *add_vertex = new bool[v_lenth]();
-        bool *remove_map = new bool[f_lenth]();
+        const int v_length = (int)border.size();
+        const int f_length = (int)border_triangles.size();
+        TrianglesCache& cache = TrianglesCache::get();
+        cache.prepare(v_length, f_length);
+        std::deque<pair<int, int>>& BFS_edges = cache.BFS_edges;
+        std::unordered_map<pair<int, int>, pair<int, int>, pair_hash>& edge_map = cache.edge_map;
+        std::unordered_set<pair<int, int>, pair_hash>& border_map = cache.border_map;
+        std::unordered_set<pair<int, int>, pair_hash>& same_edge_map = cache.same_edge_map;
+        std::unordered_set<int>& overlap_map = cache.overlap_map;
+        std::vector<bool>& add_vertex = cache.add_vertex;
+        std::vector<bool>& remove_map = cache.remove_map;
 
-        for (int i = 0; i < (int)overlap.size(); i++)
-            for (int j = 0; j < (int)border.size(); j++)
-                if (SamePointDetect(overlap[i], border[j]))
-                    overlap_map[j + 1] = true;
+        BFS_edges.insert(BFS_edges.begin(), border_edges.begin(), border_edges.end());
 
-        for (int i = 0; i < (int)border_edges.size(); i++)
+        for (int i = 0; i < v_length; ++i) { add_vertex[i] = false; }
+        for (int i = 0; i < f_length; ++i) { remove_map[i] = false; }
+
+        const int overlap_count = (int)overlap.size();
+        const int border_count = (int)border.size();
+        for (int i = 0; i < overlap_count; i++)
         {
-            int v0 = border_edges[i].first, v1 = border_edges[i].second;
-            same_edge_map[std::pair<int, int>(v0, v1)] = true;
+            const vec3d& p = overlap[i];
+            for (int j = 0; j < border_count; j++)
+            {
+                if (SamePointDetect(p, border[j]))
+                {
+                    overlap_map.insert(j + 1);
+                }
+            }
         }
-        for (int i = 0; i < (int)border_edges.size(); i++)
+
+        const int border_edges_count = (int)border_edges.size();
+        for (int i = 0; i < border_edges_count; i++)
         {
-            int v0 = border_edges[i].first, v1 = border_edges[i].second;
+            same_edge_map.insert(border_edges[i]);
+        }
+
+        for (int i = 0; i < border_edges_count; i++)
+        {
+            const int v0 = border_edges[i].first;
+            const int v1 = border_edges[i].second;
             if (same_edge_map.find(std::pair<int, int>(v1, v0)) == same_edge_map.end())
             {
-                border_map[std::pair<int, int>(v0, v1)] = true;
-                border_map[std::pair<int, int>(v1, v0)] = true;
+                border_map.insert(std::pair<int, int>(v0, v1));
+                border_map.insert(std::pair<int, int>(v1, v0));
             }
         }
 
         int borderN = border.size();
-        for (int i = 0; i < (int)border_triangles.size(); i++)
+        const int border_triangles_count = (int)border_triangles.size();
+        for (int i = 0; i < border_triangles_count; i++)
         {
-            int v0, v1, v2;
-            v0 = border_triangles[i][0];
-            v1 = border_triangles[i][1];
-            v2 = border_triangles[i][2];
+            const int v0 = border_triangles[i][0];
+            const int v1 = border_triangles[i][1];
+            const int v2 = border_triangles[i][2];
 
             if (!(v0 >= 1 && v0 <= borderN && v1 >= 1 && v1 <= borderN && v2 >= 1 && v2 <= borderN)) // ignore points added by triangle
                 continue;
 
-            pair<int, int> edge01 = std::pair<int, int>(v0, v1), edge10 = std::pair<int, int>(v1, v0);
-            pair<int, int> edge12 = std::pair<int, int>(v1, v2), edge21 = std::pair<int, int>(v2, v1);
-            pair<int, int> edge20 = std::pair<int, int>(v2, v0), edge02 = std::pair<int, int>(v0, v2);
+            const pair<int, int> edge01(v0, v1);
+            const pair<int, int> edge10(v1, v0);
+            const pair<int, int> edge12(v1, v2);
+            const pair<int, int> edge21(v2, v1);
+            const pair<int, int> edge20(v2, v0);
+            const pair<int, int> edge02(v0, v2);
 
             if (!(same_edge_map.find(edge10) != same_edge_map.end() && same_edge_map.find(edge01) != same_edge_map.end()))
             {
@@ -253,15 +319,21 @@ namespace coacd
             }
         }
 
+        const int border_edge_count = (int)border_edges.size();
+
         int i = 0;
         while (!BFS_edges.empty())
         {
-            pair<int, int> item = BFS_edges[0];
+            const pair<int, int>& item = BFS_edges.front();
+            const int v0 = item.first;
+            const int v1 = item.second;
+
             BFS_edges.pop_front();
-            int v0 = item.first, v1 = item.second;
+            
             int idx;
-            pair<int, int> edge01 = std::pair<int, int>(v0, v1), edge10 = std::pair<int, int>(v1, v0);
-            if (i < (int)border_edges.size() && edge_map.find(edge10) != edge_map.end())
+            const pair<int, int> edge01(v0, v1);
+            const pair<int, int> edge10(v1, v0);
+            if (i < border_edge_count && edge_map.find(edge10) != edge_map.end())
             {
                 idx = edge_map[edge10].second;
                 if (idx != -1)
@@ -274,10 +346,13 @@ namespace coacd
                     for (int k = 0; k < 3; k++)
                         add_vertex[border_triangles[idx][k] - 1] = true;
 
-                    int p0 = border_triangles[idx][0], p1 = border_triangles[idx][1], p2 = border_triangles[idx][2];
+                    const int p0 = border_triangles[idx][0];
+                    const int p1 = border_triangles[idx][1];
+                    const int p2 = border_triangles[idx][2];
                     if (p2 != v0 && p2 != v1)
                     {
-                        pair<int, int> pt12 = std::pair<int, int>(p1, p2), pt20 = std::pair<int, int>(p2, p0);
+                        const pair<int, int> pt12(p1, p2);
+                        const pair<int, int> pt20(p2, p0);
                         if (border_map.find(pt12) == border_map.end())
                             BFS_edges.push_back(pt12);
                         if (border_map.find(pt20) == border_map.end())
@@ -285,7 +360,8 @@ namespace coacd
                     }
                     else if (p1 != v0 && p1 != v1)
                     {
-                        pair<int, int> pt12 = std::pair<int, int>(p1, p2), pt01 = std::pair<int, int>(p0, p1);
+                        const pair<int, int> pt12(p1, p2);
+                        const pair<int, int> pt01(p0, p1);
                         if (border_map.find(pt12) == border_map.end())
                             BFS_edges.push_back(pt12);
                         if (border_map.find(pt01) == border_map.end())
@@ -293,7 +369,8 @@ namespace coacd
                     }
                     else if (p0 != v0 && p0 != v1)
                     {
-                        pair<int, int> pt01 = std::pair<int, int>(p0, p1), pt20 = std::pair<int, int>(p2, p0);
+                        const pair<int, int> pt01(p0, p1);
+                        const pair<int, int> pt20(p2, p0);
                         if (border_map.find(pt01) == border_map.end())
                             BFS_edges.push_back(pt01);
                         if (border_map.find(pt20) == border_map.end())
@@ -301,7 +378,7 @@ namespace coacd
                     }
                 }
             }
-            else if (i < (int)border_edges.size() && edge_map.find(edge01) != edge_map.end())
+            else if (i < border_edge_count && edge_map.find(edge01) != edge_map.end())
             {
                 idx = edge_map[edge01].first;
                 if (idx != -1)
@@ -317,7 +394,8 @@ namespace coacd
                     int p0 = border_triangles[idx][0], p1 = border_triangles[idx][1], p2 = border_triangles[idx][2];
                     if (p2 != v0 && p2 != v1)
                     {
-                        pair<int, int> pt21 = std::pair<int, int>(p2, p1), pt02 = std::pair<int, int>(p0, p2);
+                        const pair<int, int> pt21(p2, p1);
+                        const pair<int, int> pt02(p0, p2);
                         if (border_map.find(pt21) == border_map.end())
                             BFS_edges.push_back(pt21);
                         if (border_map.find(pt02) == border_map.end())
@@ -325,7 +403,8 @@ namespace coacd
                     }
                     else if (p1 != v0 && p1 != v1)
                     {
-                        pair<int, int> pt21 = std::pair<int, int>(p2, p1), pt10 = std::pair<int, int>(p1, p0);
+                        const pair<int, int> pt21(p2, p1);
+                        const pair<int, int> pt10(p1, p0);
                         if (border_map.find(pt21) == border_map.end())
                             BFS_edges.push_back(pt21);
                         if (border_map.find(pt10) == border_map.end())
@@ -333,7 +412,8 @@ namespace coacd
                     }
                     else if (p0 != v0 && p0 != v1)
                     {
-                        pair<int, int> pt10 = std::pair<int, int>(p1, p0), pt02 = std::pair<int, int>(p0, p2);
+                        const pair<int, int> pt10(p1, p0);
+                        const pair<int, int> pt02(p0, p2);
                         if (border_map.find(pt10) == border_map.end())
                             BFS_edges.push_back(pt10);
                         if (border_map.find(pt02) == border_map.end())
@@ -341,7 +421,7 @@ namespace coacd
                     }
                 }
             }
-            else if (i >= (int)border_edges.size() && (edge_map.find(edge01) != edge_map.end() ||
+            else if (i >= border_edge_count && (edge_map.find(edge01) != edge_map.end() ||
                                                        edge_map.find(edge10) != edge_map.end()))
             {
                 for (int j = 0; j < 2; j++)
@@ -362,21 +442,23 @@ namespace coacd
                         for (int k = 0; k < 3; k++)
                             add_vertex[border_triangles[idx][k] - 1] = true;
 
-                        int p0 = border_triangles[idx][0], p1 = border_triangles[idx][1], p2 = border_triangles[idx][2];
+                        const int p0 = border_triangles[idx][0];
+                        const int p1 = border_triangles[idx][1];
+                        const int p2 = border_triangles[idx][2];
                         if (p2 != v0 && p2 != v1)
                         {
-                            BFS_edges.push_back(std::pair<int, int>(p1, p2));
-                            BFS_edges.push_back(std::pair<int, int>(p2, p0));
+                            BFS_edges.emplace_back(p1, p2);
+                            BFS_edges.emplace_back(p2, p0);
                         }
                         else if (p1 != v0 && p1 != v1)
                         {
-                            BFS_edges.push_back(std::pair<int, int>(p1, p2));
-                            BFS_edges.push_back(std::pair<int, int>(p0, p1));
+                            BFS_edges.emplace_back(p1, p2);
+                            BFS_edges.emplace_back(p0, p1);
                         }
                         else if (p0 != v0 && p0 != v1)
                         {
-                            BFS_edges.push_back(std::pair<int, int>(p0, p1));
-                            BFS_edges.push_back(std::pair<int, int>(p2, p0));
+                            BFS_edges.emplace_back(p0, p1);
+                            BFS_edges.emplace_back(p2, p0);
                         }
                     }
                 }
@@ -385,16 +467,14 @@ namespace coacd
         }
 
         int index = 0;
-        for (int i = 0; i < (int)border.size(); i++)
+        for (int i = 0; i < border_count; i++)
         {
-            if (i < oriN || add_vertex[i] == true)
+            if (i < oriN || add_vertex[i])
             {
                 final_border.push_back(border[i]);
                 vertex_map[i + 1] = ++index;
             }
         }
-        delete[] add_vertex;
-        delete[] remove_map;
     }
 
     struct Cache

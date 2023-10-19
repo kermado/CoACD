@@ -12,7 +12,7 @@ namespace coacd
     {
         inline std::size_t operator()(const std::pair<int, int>& p) const
         {
-            return std::size_t(p.first) * std::size_t(7) + std::size_t(p.second) * std::size_t(13);
+            return p.first * 7 + p.second * 13;
         }
     };
 
@@ -80,12 +80,9 @@ namespace coacd
         }
     }
 
-    inline bool FaceOverlap(std::unordered_map<int, bool>& overlap_map, vec3i triangle)
+    inline bool FaceOverlap(const std::unordered_set<int>& overlap_map, const vec3i& triangle)
     {
-        int idx0 = triangle[0], idx1 = triangle[1], idx2 = triangle[2];
-        if (overlap_map.find(idx0) == overlap_map.end() && overlap_map.find(idx1) == overlap_map.end() &&
-            overlap_map.find(idx2) == overlap_map.end())
-            return false;
-        return true;
+        const auto end = overlap_map.cend();
+        return overlap_map.find(triangle[0]) != end || overlap_map.find(triangle[1]) != end || overlap_map.find(triangle[2]) != end;
     }
 }
