@@ -250,14 +250,6 @@ namespace coacd
         Diagonalize(covMat, m_rot, D);
     }
 
-    inline void addEdge(map<pair<int, int>, bool> &edge_map, int id1, int id2)
-    {
-        pair<int, int> edge1 = make_pair(id1, id2);
-        pair<int, int> edge2 = make_pair(id2, id1);
-        if (edge_map.find(edge1) == edge_map.end() && edge_map.find(edge2) == edge_map.end())
-            edge_map[edge1] = true;
-    }
-
     bool ComputeOverlapFace(const Model &convex1, const Model &convex2, Plane &plane)
     {
         bool flag;
@@ -529,13 +521,15 @@ namespace coacd
         return true;
     }
 
-    bool Model::Load(vector<vec3d> vertices, vector<vec3i> face_indices)
+    bool Model::Load(const vector<vec3d>& vertices, const vector<vec3i>& face_indices)
     {
-        double x_min = INF, x_max = -INF, y_min = INF, y_max = -INF, z_min = INF, z_max = -INF;
-        for (int i = 0; i < (int)vertices.size(); ++i)
-        {
-            points.push_back({vertices[i][0], vertices[i][1], vertices[i][2]});
+        points.insert(points.begin(), vertices.begin(), vertices.end());
 
+        double x_min = INF, x_max = -INF, y_min = INF, y_max = -INF, z_min = INF, z_max = -INF;
+
+        const int count = (int)vertices.size();
+        for (int i = 0; i < count; ++i)
+        {
             x_min = min(x_min, vertices[i][0]);
             x_max = max(x_max, vertices[i][0]);
             y_min = min(y_min, vertices[i][1]);
@@ -551,11 +545,7 @@ namespace coacd
         bbox[4] = z_min;
         bbox[5] = z_max;
 
-        for (int i = 0; i < (int)face_indices.size(); ++i)
-        {
-            triangles.push_back({face_indices[i][0], face_indices[i][1], face_indices[i][2]});
-        }
-
+        triangles.insert(triangles.begin(), face_indices.begin(), face_indices.end());
         return true;
     }
 

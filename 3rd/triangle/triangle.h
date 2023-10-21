@@ -351,6 +351,9 @@
 #include <array>
 #include <iostream>
 
+#include "../src/vec3.h"
+#include "../src/pair.h"
+
 #ifndef NO_TIMER
 #include <sys/time.h>
 #endif /* not NO_TIMER */
@@ -12511,13 +12514,12 @@ int numberofsegments;
 #else /* not TRILIBRARY */
 
 #ifdef ANSI_DECLARATORS
-void formskeleton(struct mesh *m, struct behavior *b,
-                  vector<pair<int, int>> segments)
+void formskeleton(struct mesh *m, struct behavior *b, const vector<coacd::pair>& segments)
 #else /* not ANSI_DECLARATORS */
 void formskeleton(m, b, segments)
 struct mesh *m;
 struct behavior *b;
-vector<pair<int, int>> segments;
+const vector<coacd::pair>& segments;
 #endif /* not ANSI_DECLARATORS */
 
 #endif /* not TRILIBRARY */
@@ -12572,8 +12574,8 @@ vector<pair<int, int>> segments;
         boundmarker = segmentmarkerlist[i];
       }
 #else /* not TRILIBRARY */
-      end1 = segments[i].first;
-      end2 = segments[i].second;
+      end1 = segments[i].m[0];
+      end2 = segments[i].m[1];
 #endif /* not TRILIBRARY */
       if ((end1 < b->firstnumber) ||
           (end1 >= b->firstnumber + m->invertices)) {
@@ -14372,7 +14374,7 @@ REAL **triangleattriblist;
 #else /* not TRILIBRARY */
 
 #ifdef ANSI_DECLARATORS
-void writeelements(struct mesh *m, struct behavior *b, vector<array<int, 3>>& triangles)
+void writeelements(struct mesh *m, struct behavior *b, vector<coacd::vec3i>& triangles)
 #else /* not ANSI_DECLARATORS */
 void writeelements(m, b, triangles)
 struct mesh *m;
@@ -15542,13 +15544,12 @@ struct triangulateio *vorout;
 #else /* not TRILIBRARY */
 
 #ifdef ANSI_DECLARATORS
-int Triangulate(const vector<array<double, 2>>& vertices, const vector<pair<int, int>>& segments, 
-                vector<array<int, 3>>& triangles, vector<array<double, 2>>& nodes, bool& is_success, size_t mode=0)
+int Triangulate(const vector<array<double, 2>>& vertices, const vector<coacd::pair>& segments, vector<coacd::vec3i>& triangles, vector<array<double, 2>>& nodes, bool& is_success, size_t mode=0)
 #else /* not ANSI_DECLARATORS */
 int Triangulate(vertices, segments, triangles, nodes, is_success, mode)
 vector<array<double, 2>> vertices;
-vector<pair<int, int>> segments;
-vector<array<int, 3>>& triangles;
+vector<coacd::pair> segments;
+vector<coacd::vec3i>& triangles;
 vector<array<double, 2>>& nodes;
 bool& is_success;
 size_t mode;

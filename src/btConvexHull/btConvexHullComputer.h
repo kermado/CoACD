@@ -15,6 +15,7 @@ subject to the following restrictions:
 #ifndef BT_CONVEX_HULL_COMPUTER_H
 #define BT_CONVEX_HULL_COMPUTER_H
 
+#include "../src/vec3.h"
 #include "btAlignedObjectArray.h"
 #include "btVector3.h"
 #include <vector>
@@ -97,7 +98,7 @@ public:
     // {
     //     return compute(points);
     // }
-    btScalar compute(vector<array<double, 3>> points, btScalar shrink, btScalar shrinkClamp);
+    btScalar compute(vector<coacd::vec3d> points, btScalar shrink, btScalar shrinkClamp);
 };
 
 #endif //BT_CONVEX_HULL_COMPUTER_H

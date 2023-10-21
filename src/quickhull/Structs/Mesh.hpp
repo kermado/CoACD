@@ -10,7 +10,6 @@
 #include <limits>
 #include <memory>
 #include "VertexDataSource.hpp"
-#include <unordered_map>
 #include <cstdint>
 
 /*

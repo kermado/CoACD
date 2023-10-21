@@ -27,16 +27,6 @@ namespace coacd
   double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, double epsilon = 0.02, double threshold = 0.01);
   vector<Model> Compute(Model &mesh, Params &params);
 
-  inline void addNeighbor(map<pair<int, int>, pair<int, int>> &edge_map, pair<int, int> &edge, vector<int> &neighbors, int idx)
-  {
-    int first = edge_map[edge].first;
-    int second = edge_map[edge].second;
-    if (first != idx && first != -1)
-      neighbors.push_back(first);
-    if (second != idx && second != -1)
-      neighbors.push_back(second);
-  }
-
   inline int32_t FindMinimumElement(const vector<double>& d, double *const m, const int32_t begin, const int32_t end)
   {
     int32_t idx = -1;

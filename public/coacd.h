@@ -1,4 +1,6 @@
 #pragma once
+#include "../src/vec3.h"
+
 #include <array>
 #include <string>
 #include <string_view>
@@ -13,8 +15,8 @@ namespace coacd {
 #endif
 
 struct Mesh {
-  std::vector<std::array<double, 3>> vertices;
-  std::vector<std::array<int, 3>> indices;
+  std::vector<vec3d> vertices;
+  std::vector<vec3i> indices;
 };
 
 std::vector<Mesh> CoACD(Mesh const &input, double threshold = 0.05,

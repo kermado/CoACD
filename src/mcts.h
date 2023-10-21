@@ -49,7 +49,7 @@ namespace coacd
   {
   public:
     double terminal_threshold;
-    pair<Plane, int> current_value;
+    std::pair<Plane, int> current_value;
     double current_cost;
     double current_score;
     int current_round;
@@ -69,8 +69,8 @@ namespace coacd
 
     State operator=(const State &_state);
 
-    void set_current_value(pair<Plane, int> value);
-    pair<Plane, int> get_current_value();
+    void set_current_value(std::pair<Plane, int> value);
+    std::pair<Plane, int> get_current_value();
     void set_current_round(int round);
     int get_current_round();
     bool is_terminal();

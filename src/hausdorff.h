@@ -71,9 +71,10 @@ namespace coacd
 
         // distance can be calculated directly using the function, then we get the projected point as well
         const double dist = fabs(a * pt[0] + b * pt[1] + c * pt[2] + d);
-        vec3d proj_pt;
-        const Plane p = Plane(a, b, c, d);
+        const Plane p(a, b, c, d);
         const short side = p.Side(pt, 1e-8);
+
+        vec3d proj_pt;
         if (side == 1)
         {
             proj_pt[0] = pt[0] - a * dist;

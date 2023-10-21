@@ -1,6 +1,7 @@
 #include "preprocess.h"
 #include "logger.h"
 #include "shape.h"
+#include "clip.h"
 
 namespace coacd
 {
@@ -63,16 +64,16 @@ namespace coacd
         clock_t start, end;
         start = clock();
         // Check all edges are shared by exactly two triangles (watertight manifold)
-        vector<pair<int, int>> edges;
-        map<pair<int, int>, int> edge_num;
+        vector<pair> edges;
+        hash_map<pair, int, pair_hash> edge_num;
         for (int i = 0; i < (int)input.triangles.size(); i++)
         {
-            int idx0 = input.triangles[i][0];
-            int idx1 = input.triangles[i][1];
-            int idx2 = input.triangles[i][2];
-            edges.push_back({idx0, idx1});
-            edges.push_back({idx1, idx2});
-            edges.push_back({idx2, idx0});
+            const int idx0 = input.triangles[i][0];
+            const int idx1 = input.triangles[i][1];
+            const int idx2 = input.triangles[i][2];
+            edges.emplace_back(idx0, idx1);
+            edges.emplace_back(idx1, idx2);
+            edges.emplace_back(idx2, idx0);
 
             if (!edge_num.contains({idx0, idx1}))
                 edge_num[{idx0, idx1}] = 1;
@@ -105,7 +106,7 @@ namespace coacd
 
         for (int i = 0; i < (int)edges.size(); i++)
         {
-            pair<int, int> oppo_edge = {edges[i].second, edges[i].first};
+            const pair oppo_edge(edges[i].m[1], edges[i].m[0]);
             if (!edge_num.contains(oppo_edge))
             {
                 logger::info("\tUnclosed mesh");

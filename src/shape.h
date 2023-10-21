@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vec3.h"
+
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -34,10 +36,6 @@ using std::runtime_error;
 
 namespace coacd
 {
-
-    using vec3d = std::array<double, 3>;
-    using vec3i = std::array<int, 3>;
-    using vec3s = std::array<short, 3>;
     constexpr double INF = std::numeric_limits<double>::max();
 
     struct HalfEdge

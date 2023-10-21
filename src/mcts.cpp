@@ -95,11 +95,11 @@ namespace coacd
         return (*this);
     }
 
-    void State::set_current_value(pair<Plane, int> value)
+    void State::set_current_value(std::pair<Plane, int> value)
     {
         current_value = value;
     }
-    pair<Plane, int> State::get_current_value()
+    std::pair<Plane, int> State::get_current_value()
     {
         return current_value;
     }

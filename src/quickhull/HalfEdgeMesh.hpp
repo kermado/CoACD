@@ -1,4 +1,6 @@
 #include "Structs/Mesh.hpp"
+#include "../src/hash/HashMap.h"
+#include "../src/hash/unordered_dense.h"
 
 #ifndef HalfEdgeMesh_h
 #define HalfEdgeMesh_h
@@ -62,9 +64,9 @@ namespace quickhull {
 		
 		HalfEdgeMesh(const MeshBuilder<FloatType>& builderObject, const VertexDataSource<FloatType>& vertexData )
 		{
-			std::unordered_map<IndexType,IndexType> faceMapping;
-			std::unordered_map<IndexType,IndexType> halfEdgeMapping;
-			std::unordered_map<IndexType, IndexType> vertexMapping;
+			emhash7::HashMap<IndexType, IndexType, ankerl::unordered_dense::hash<IndexType>> faceMapping;
+			emhash7::HashMap<IndexType, IndexType, ankerl::unordered_dense::hash<IndexType>> halfEdgeMapping;
+			emhash7::HashMap<IndexType, IndexType, ankerl::unordered_dense::hash<IndexType>> vertexMapping;
 			
 			size_t i=0;
 			for (const auto& face : builderObject.m_faces) {

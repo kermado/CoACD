@@ -1,11 +1,13 @@
 #ifndef CONVEXHULL_HPP_
 #define CONVEXHULL_HPP_
 
+#include "../src/hash/HashMap.h"
+#include "../src/hash/unordered_dense.h"
+
 #include "Structs/Vector3.hpp"
 #include "Structs/Mesh.hpp"
 #include "Structs/VertexDataSource.hpp"
 #include <vector>
-#include <unordered_map>
 #include <fstream>
 #include <memory>
 
@@ -118,7 +120,7 @@ namespace quickhull {
 			
 			std::vector<bool> faceProcessed(mesh.m_faces.size(),false);
 			std::vector<size_t> faceStack;
-			std::unordered_map<size_t,size_t> vertexIndexMapping; // Map vertex indices from original point cloud to the new mesh vertex indices
+			emhash7::HashMap<size_t, size_t, ankerl::unordered_dense::hash<size_t>> vertexIndexMapping; // Map vertex indices from original point cloud to the new mesh vertex indices
 			for (size_t i = 0;i<mesh.m_faces.size();i++) {
 				if (!mesh.m_faces[i].isDisabled()) {
 					faceStack.push_back(i);
