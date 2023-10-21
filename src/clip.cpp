@@ -10,7 +10,7 @@ namespace coacd
         for (int n = 0; n < (int)points.size(); n++)
         {
             os << "v " << points[n][0] << " " << points[n][1] << " 0"
-               << "\n";
+                << "\n";
         }
         os.close();
     }
@@ -61,7 +61,7 @@ namespace coacd
 
             const double dot_product = AB[0] * BC[0] + AB[1] * BC[1] + AB[2] * BC[2];
             const double res = dot_product / (sqrt(AB[0] * AB[0] + AB[1] * AB[1] + AB[2] * AB[2]) * sqrt(BC[0] * BC[0] + BC[1] * BC[1] + BC[2] * BC[2]));
-            if (fabs(fabs(res) - 1) > 1e-6 && fabs(res) < INF) // AB not \\ BC, dot product != 1
+            if (abs(abs(res) - 1) > 1e-6 && abs(res) < INF) // AB not \\ BC, dot product != 1
             {
                 flag = 1;
                 idx2 = i;
@@ -134,8 +134,8 @@ namespace coacd
         vector<array<double, 2>> nodes;
 
         TriangulateCache()
-        : points(),
-          nodes()
+            : points(),
+            nodes()
         {
             // Nothing to do.
         }
@@ -203,7 +203,7 @@ namespace coacd
             const double x = R[0][0] * nodes[i][0] + R[1][0] * nodes[i][1] + T[0];
             const double y = R[0][1] * nodes[i][0] + R[1][1] * nodes[i][1] + T[1];
             const double z = R[0][2] * nodes[i][0] + R[1][2] * nodes[i][1] + T[2];
-            border.push_back({ x, y, z });
+            border.emplace_back(x, y, z);
         }
 
         return 0;
@@ -220,13 +220,13 @@ namespace coacd
         std::vector<bool> remove_map;
 
         TrianglesCache()
-        : BFS_edges(),
-          edge_map(),
-          border_map(),
-          same_edge_map(),
-          overlap_map(),
-          add_vertex(),
-          remove_map()
+            : BFS_edges(),
+            edge_map(),
+            border_map(),
+            same_edge_map(),
+            overlap_map(),
+            add_vertex(),
+            remove_map()
         {
             // Nothing to do.
         }
@@ -255,7 +255,7 @@ namespace coacd
     };
 
     void RemoveOutlierTriangles(const vector<vec3d>& border, const vector<vec3d>& overlap, const vector<pair>& border_edges, const vector<vec3i>& border_triangles, int oriN,
-                                hash_map<int, int> &vertex_map, vector<vec3d> &final_border, vector<vec3i> &final_triangles)
+        hash_map<int, int>& vertex_map, vector<vec3d>& final_border, vector<vec3i>& final_triangles)
     {
         const int v_length = (int)border.size();
         const int f_length = (int)border_triangles.size();
@@ -358,99 +358,107 @@ namespace coacd
             const pair& item = BFS_edges[front++];
             const int v0 = item.m[0];
             const int v1 = item.m[1];
-            
+
             int idx;
             const pair edge01(v0, v1);
             const pair edge10(v1, v0);
             if (i < border_edge_count && edge_map.contains(edge10))
             {
-                idx = edge_map[edge10].m[1];
+                const pair& p = edge_map[edge10];
+                idx = p.m[1];
                 if (idx != -1)
                     remove_map[idx] = true;
-                idx = edge_map[edge10].m[0];
-                const vec3i& triangle = border_triangles[idx];
-                if (idx != -1 && !remove_map[idx] && !FaceOverlap(overlap_map, triangle))
+                idx = p.m[0];
+                if (idx != -1)
                 {
-                    remove_map[idx] = true;
-                    final_triangles.push_back(triangle);
-                    for (int k = 0; k < 3; k++)
-                        add_vertex[triangle[k] - 1] = true;
+                    const vec3i& triangle = border_triangles[idx];
+                    if (!remove_map[idx] && !FaceOverlap(overlap_map, triangle))
+                    {
+                        remove_map[idx] = true;
+                        final_triangles.push_back(triangle);
+                        for (int k = 0; k < 3; k++)
+                            add_vertex[triangle[k] - 1] = true;
 
-                    const int p0 = triangle[0];
-                    const int p1 = triangle[1];
-                    const int p2 = triangle[2];
-                    if (p2 != v0 && p2 != v1)
-                    {
-                        const pair pt12(p1, p2);
-                        const pair pt20(p2, p0);
-                        if (border_map.contains(pt12) == false)
-                            BFS_edges.push_back(pt12);
-                        if (border_map.contains(pt20) == false)
-                            BFS_edges.push_back(pt20);
-                    }
-                    else if (p1 != v0 && p1 != v1)
-                    {
-                        const pair pt12(p1, p2);
-                        const pair pt01(p0, p1);
-                        if (border_map.contains(pt12) == false)
-                            BFS_edges.push_back(pt12);
-                        if (border_map.contains(pt01) == false)
-                            BFS_edges.push_back(pt01);
-                    }
-                    else if (p0 != v0 && p0 != v1)
-                    {
-                        const pair pt01(p0, p1);
-                        const pair pt20(p2, p0);
-                        if (border_map.contains(pt01) == false)
-                            BFS_edges.push_back(pt01);
-                        if (border_map.contains(pt20) == false)
-                            BFS_edges.push_back(pt20);
+                        const int p0 = triangle[0];
+                        const int p1 = triangle[1];
+                        const int p2 = triangle[2];
+                        if (p2 != v0 && p2 != v1)
+                        {
+                            const pair pt12(p1, p2);
+                            const pair pt20(p2, p0);
+                            if (border_map.contains(pt12) == false)
+                                BFS_edges.push_back(pt12);
+                            if (border_map.contains(pt20) == false)
+                                BFS_edges.push_back(pt20);
+                        }
+                        else if (p1 != v0 && p1 != v1)
+                        {
+                            const pair pt12(p1, p2);
+                            const pair pt01(p0, p1);
+                            if (border_map.contains(pt12) == false)
+                                BFS_edges.push_back(pt12);
+                            if (border_map.contains(pt01) == false)
+                                BFS_edges.push_back(pt01);
+                        }
+                        else if (p0 != v0 && p0 != v1)
+                        {
+                            const pair pt01(p0, p1);
+                            const pair pt20(p2, p0);
+                            if (border_map.contains(pt01) == false)
+                                BFS_edges.push_back(pt01);
+                            if (border_map.contains(pt20) == false)
+                                BFS_edges.push_back(pt20);
+                        }
                     }
                 }
             }
             else if (i < border_edge_count && edge_map.contains(edge01))
             {
-                idx = edge_map[edge01].m[0];
+                const pair& p = edge_map[edge01];
+                idx = p.m[0];
                 if (idx != -1)
                     remove_map[idx] = true;
-                idx = edge_map[edge01].m[1];
-                const vec3i& triangle = border_triangles[idx];
-                if (idx != -1 && !remove_map[idx] && !FaceOverlap(overlap_map, triangle))
+                idx = p.m[1];
+                if (idx != -1)
                 {
-                    remove_map[idx] = true;
-                    final_triangles.push_back(triangle);
-                    for (int k = 0; k < 3; k++)
-                        add_vertex[triangle[k] - 1] = true;
+                    const vec3i& triangle = border_triangles[idx];
+                    if (!remove_map[idx] && !FaceOverlap(overlap_map, triangle))
+                    {
+                        remove_map[idx] = true;
+                        final_triangles.push_back(triangle);
+                        for (int k = 0; k < 3; k++)
+                            add_vertex[triangle[k] - 1] = true;
 
-                    const int p0 = triangle[0];
-                    const int p1 = triangle[1];
-                    const int p2 = triangle[2];
-                    if (p2 != v0 && p2 != v1)
-                    {
-                        const pair pt21(p2, p1);
-                        const pair pt02(p0, p2);
-                        if (border_map.contains(pt21) == false)
-                            BFS_edges.push_back(pt21);
-                        if (border_map.contains(pt02) == false)
-                            BFS_edges.push_back(pt02);
-                    }
-                    else if (p1 != v0 && p1 != v1)
-                    {
-                        const pair pt21(p2, p1);
-                        const pair pt10(p1, p0);
-                        if (border_map.contains(pt21) == false)
-                            BFS_edges.push_back(pt21);
-                        if (border_map.contains(pt10) == false)
-                            BFS_edges.push_back(pt10);
-                    }
-                    else if (p0 != v0 && p0 != v1)
-                    {
-                        const pair pt10(p1, p0);
-                        const pair pt02(p0, p2);
-                        if (border_map.contains(pt10) == false)
-                            BFS_edges.push_back(pt10);
-                        if (border_map.contains(pt02) == false)
-                            BFS_edges.push_back(pt02);
+                        const int p0 = triangle[0];
+                        const int p1 = triangle[1];
+                        const int p2 = triangle[2];
+                        if (p2 != v0 && p2 != v1)
+                        {
+                            const pair pt21(p2, p1);
+                            const pair pt02(p0, p2);
+                            if (border_map.contains(pt21) == false)
+                                BFS_edges.push_back(pt21);
+                            if (border_map.contains(pt02) == false)
+                                BFS_edges.push_back(pt02);
+                        }
+                        else if (p1 != v0 && p1 != v1)
+                        {
+                            const pair pt21(p2, p1);
+                            const pair pt10(p1, p0);
+                            if (border_map.contains(pt21) == false)
+                                BFS_edges.push_back(pt21);
+                            if (border_map.contains(pt10) == false)
+                                BFS_edges.push_back(pt10);
+                        }
+                        else if (p0 != v0 && p0 != v1)
+                        {
+                            const pair pt10(p1, p0);
+                            const pair pt02(p0, p2);
+                            if (border_map.contains(pt10) == false)
+                                BFS_edges.push_back(pt10);
+                            if (border_map.contains(pt02) == false)
+                                BFS_edges.push_back(pt02);
+                        }
                     }
                 }
             }
@@ -554,7 +562,7 @@ namespace coacd
         }
     };
 
-    bool Clip(const Model &mesh, Model &pos, Model &neg, Plane &plane, double &cut_area, bool foo)
+    bool Clip(const Model& mesh, Model& pos, Model& neg, Plane& plane, double& cut_area, bool foo)
     {
         const int N = mesh.points.size();
 
@@ -684,8 +692,8 @@ namespace coacd
                     addEdgePoint(edge_map, border, pi1, id1, id2, idx);
 
                     // record the edges
-                    int f0_idx = edge_map[pair(id0, id1)];
-                    int f1_idx = edge_map[pair(id1, id2)];
+                    const int f0_idx = edge_map[pair(id0, id1)];
+                    const int f1_idx = edge_map[pair(id1, id2)];
                     if (s1 == 1)
                     {
                         if (f1_idx != f0_idx)
@@ -694,15 +702,15 @@ namespace coacd
                             pos_map[id1] = true;
                             neg_map[id0] = true;
                             neg_map[id2] = true;
-                            pos.triangles.push_back({id1, -1 * f1_idx - 1, -1 * f0_idx - 1}); // make sure it is not zero
-                            neg.triangles.push_back({id0, -1 * f0_idx - 1, -1 * f1_idx - 1});
-                            neg.triangles.push_back({-1 * f1_idx - 1, id2, id0});
+                            pos.triangles.emplace_back(id1, -1 * f1_idx - 1, -1 * f0_idx - 1); // make sure it is not zero
+                            neg.triangles.emplace_back(id0, -1 * f0_idx - 1, -1 * f1_idx - 1);
+                            neg.triangles.emplace_back(-1 * f1_idx - 1, id2, id0);
                         }
                         else
                         {
                             neg_map[id0] = true;
                             neg_map[id2] = true;
-                            neg.triangles.push_back({-1 * f1_idx - 1, id2, id0});
+                            neg.triangles.emplace_back(-1 * f1_idx - 1, id2, id0);
                         }
                     }
                     else
@@ -713,15 +721,15 @@ namespace coacd
                             neg_map[id1] = true;
                             pos_map[id0] = true;
                             pos_map[id2] = true;
-                            neg.triangles.push_back({id1, -1 * f1_idx - 1, -1 * f0_idx - 1});
-                            pos.triangles.push_back({id0, -1 * f0_idx - 1, -1 * f1_idx - 1});
-                            pos.triangles.push_back({-1 * f1_idx - 1, id2, id0});
+                            neg.triangles.emplace_back(id1, -1 * f1_idx - 1, -1 * f0_idx - 1);
+                            pos.triangles.emplace_back(id0, -1 * f0_idx - 1, -1 * f1_idx - 1);
+                            pos.triangles.emplace_back(-1 * f1_idx - 1, id2, id0);
                         }
                         else
                         {
                             pos_map[id0] = true;
                             pos_map[id2] = true;
-                            pos.triangles.push_back({-1 * f1_idx - 1, id2, id0});
+                            pos.triangles.emplace_back(-1 * f1_idx - 1, id2, id0);
                         }
                     }
                 }
@@ -733,8 +741,8 @@ namespace coacd
                     addEdgePoint(edge_map, border, pi2, id2, id0, idx);
 
                     // record the edges
-                    int f1_idx = edge_map[pair(id1, id2)];
-                    int f2_idx = edge_map[pair(id2, id0)];
+                    const int f1_idx = edge_map[pair(id1, id2)];
+                    const int f2_idx = edge_map[pair(id2, id0)];
                     if (s2 == 1)
                     {
                         if (f2_idx != f1_idx)
@@ -743,15 +751,15 @@ namespace coacd
                             pos_map[id2] = true;
                             neg_map[id0] = true;
                             neg_map[id1] = true;
-                            pos.triangles.push_back({id2, -1 * f2_idx - 1, -1 * f1_idx - 1});
-                            neg.triangles.push_back({id0, -1 * f1_idx - 1, -1 * f2_idx - 1});
-                            neg.triangles.push_back({-1 * f1_idx - 1, id0, id1});
+                            pos.triangles.emplace_back(id2, -1 * f2_idx - 1, -1 * f1_idx - 1);
+                            neg.triangles.emplace_back(id0, -1 * f1_idx - 1, -1 * f2_idx - 1);
+                            neg.triangles.emplace_back(-1 * f1_idx - 1, id0, id1);
                         }
                         else
                         {
                             neg_map[id0] = true;
                             neg_map[id1] = true;
-                            neg.triangles.push_back({-1 * f1_idx - 1, id0, id1});
+                            neg.triangles.emplace_back(-1 * f1_idx - 1, id0, id1);
                         }
                     }
                     else
@@ -762,15 +770,15 @@ namespace coacd
                             neg_map[id2] = true;
                             pos_map[id0] = true;
                             pos_map[id1] = true;
-                            neg.triangles.push_back({id2, -1 * f2_idx - 1, -1 * f1_idx - 1});
-                            pos.triangles.push_back({id0, -1 * f1_idx - 1, -1 * f2_idx - 1});
-                            pos.triangles.push_back({-1 * f1_idx - 1, id0, id1});
+                            neg.triangles.emplace_back(id2, -1 * f2_idx - 1, -1 * f1_idx - 1);
+                            pos.triangles.emplace_back(id0, -1 * f1_idx - 1, -1 * f2_idx - 1);
+                            pos.triangles.emplace_back(-1 * f1_idx - 1, id0, id1);
                         }
                         else
                         {
                             pos_map[id0] = true;
                             pos_map[id1] = true;
-                            pos.triangles.push_back({-1 * f1_idx - 1, id0, id1});
+                            pos.triangles.emplace_back(-1 * f1_idx - 1, id0, id1);
                         }
                     }
                 }
@@ -781,8 +789,8 @@ namespace coacd
                     // f0
                     addEdgePoint(edge_map, border, pi0, id0, id1, idx);
 
-                    int f0_idx = edge_map[pair(id0, id1)];
-                    int f2_idx = edge_map[pair(id2, id0)];
+                    const int f0_idx = edge_map[pair(id0, id1)];
+                    const int f2_idx = edge_map[pair(id2, id0)];
                     if (s0 == 1)
                     {
                         if (f0_idx != f2_idx)
@@ -791,15 +799,15 @@ namespace coacd
                             pos_map[id0] = true;
                             neg_map[id1] = true;
                             neg_map[id2] = true;
-                            pos.triangles.push_back({id0, -1 * f0_idx - 1, -1 * f2_idx - 1});
-                            neg.triangles.push_back({id1, -1 * f2_idx - 1, -1 * f0_idx - 1});
-                            neg.triangles.push_back({-1 * f2_idx - 1, id1, id2});
+                            pos.triangles.emplace_back(id0, -1 * f0_idx - 1, -1 * f2_idx - 1);
+                            neg.triangles.emplace_back(id1, -1 * f2_idx - 1, -1 * f0_idx - 1);
+                            neg.triangles.emplace_back(-1 * f2_idx - 1, id1, id2);
                         }
                         else
                         {
                             neg_map[id1] = true;
                             neg_map[id2] = true;
-                            neg.triangles.push_back({-1 * f2_idx - 1, id1, id2});
+                            neg.triangles.emplace_back(-1 * f2_idx - 1, id1, id2);
                         }
                     }
                     else
@@ -810,15 +818,15 @@ namespace coacd
                             neg_map[id0] = true;
                             pos_map[id1] = true;
                             pos_map[id2] = true;
-                            neg.triangles.push_back({id0, -1 * f0_idx - 1, -1 * f2_idx - 1});
-                            pos.triangles.push_back({id1, -1 * f2_idx - 1, -1 * f0_idx - 1});
-                            pos.triangles.push_back({-1 * f2_idx - 1, id1, id2});
+                            neg.triangles.emplace_back(id0, -1 * f0_idx - 1, -1 * f2_idx - 1);
+                            pos.triangles.emplace_back(id1, -1 * f2_idx - 1, -1 * f0_idx - 1);
+                            pos.triangles.emplace_back(-1 * f2_idx - 1, id1, id2);
                         }
                         else
                         {
                             pos_map[id1] = true;
                             pos_map[id2] = true;
-                            pos.triangles.push_back({-1 * f2_idx - 1, id1, id2});
+                            pos.triangles.emplace_back(-1 * f2_idx - 1, id1, id2);
                         }
                     }
                 }
@@ -828,35 +836,36 @@ namespace coacd
                     {
                         // f2 = f0 = p0
                         addPoint(vertex_map, border, p0, id0, idx);
-                        edge_map[pair(id0, id1)] = vertex_map[id0];
-                        edge_map[pair(id1, id0)] = vertex_map[id0];
-                        edge_map[pair(id2, id0)] = vertex_map[id0];
-                        edge_map[pair(id0, id2)] = vertex_map[id0];
+                        const int v = vertex_map[id0];
+                        edge_map[pair(id0, id1)] = v;
+                        edge_map[pair(id1, id0)] = v;
+                        edge_map[pair(id2, id0)] = v;
+                        edge_map[pair(id0, id2)] = v;
 
                         // f1
                         addEdgePoint(edge_map, border, pi1, id1, id2, idx);
-                        int f1_idx = edge_map[pair(id1, id2)];
-                        int f0_idx = vertex_map[id0];
+                        const int f1_idx = edge_map[pair(id1, id2)];
+                        const int f0_idx = v;
                         if (s1 == 1)
                         {
                             if (f1_idx != f0_idx)
                             {
-                                border_edges.push_back(pair(f1_idx + 1, f0_idx + 1));
+                                border_edges.emplace_back(f1_idx + 1, f0_idx + 1);
                                 pos_map[id1] = true;
                                 neg_map[id2] = true;
-                                pos.triangles.push_back({id1, -1 * f1_idx - 1, -1 * f0_idx - 1});
-                                neg.triangles.push_back({id2, -1 * f0_idx - 1, -1 * f1_idx - 1});
+                                pos.triangles.emplace_back(id1, -1 * f1_idx - 1, -1 * f0_idx - 1);
+                                neg.triangles.emplace_back(id2, -1 * f0_idx - 1, -1 * f1_idx - 1);
                             }
                         }
                         else
                         {
                             if (f0_idx != f1_idx)
                             {
-                                border_edges.push_back(pair(f0_idx + 1, f1_idx + 1));
+                                border_edges.emplace_back(f0_idx + 1, f1_idx + 1);
                                 neg_map[id1] = true;
                                 pos_map[id2] = true;
-                                neg.triangles.push_back({id1, -1 * f1_idx - 1, -1 * f0_idx - 1});
-                                pos.triangles.push_back({id2, -1 * f0_idx - 1, -1 * f1_idx - 1});
+                                neg.triangles.emplace_back(id1, -1 * f1_idx - 1, -1 * f0_idx - 1);
+                                pos.triangles.emplace_back(id2, -1 * f0_idx - 1, -1 * f1_idx - 1);
                             }
                         }
                     }
@@ -864,35 +873,36 @@ namespace coacd
                     {
                         // f0 = f1 = p1
                         addPoint(vertex_map, border, p1, id1, idx);
-                        edge_map[pair(id0, id1)] = vertex_map[id1];
-                        edge_map[pair(id1, id0)] = vertex_map[id1];
-                        edge_map[pair(id1, id2)] = vertex_map[id1];
-                        edge_map[pair(id2, id1)] = vertex_map[id1];
+                        const int v = vertex_map[id1];
+                        edge_map[pair(id0, id1)] = v;
+                        edge_map[pair(id1, id0)] = v;
+                        edge_map[pair(id1, id2)] = v;
+                        edge_map[pair(id2, id1)] = v;
 
                         // f2
                         addEdgePoint(edge_map, border, pi2, id2, id0, idx);
-                        int f1_idx = vertex_map[id1];
-                        int f2_idx = edge_map[pair(id2, id0)];
+                        const int f1_idx = v;
+                        const int f2_idx = edge_map[pair(id2, id0)];
                         if (s0 == 1)
                         {
                             if (f1_idx != f2_idx)
                             {
-                                border_edges.push_back(pair(f1_idx + 1, f2_idx + 1));
+                                border_edges.emplace_back(f1_idx + 1, f2_idx + 1);
                                 pos_map[id0] = true;
                                 neg_map[id2] = true;
-                                pos.triangles.push_back({id0, -1 * f1_idx - 1, -1 * f2_idx - 1});
-                                neg.triangles.push_back({id2, -1 * f2_idx - 1, -1 * f1_idx - 1});
+                                pos.triangles.emplace_back(id0, -1 * f1_idx - 1, -1 * f2_idx - 1);
+                                neg.triangles.emplace_back(id2, -1 * f2_idx - 1, -1 * f1_idx - 1);
                             }
                         }
                         else
                         {
                             if (f2_idx != f1_idx)
                             {
-                                border_edges.push_back(pair(f2_idx + 1, f1_idx + 1));
+                                border_edges.emplace_back(f2_idx + 1, f1_idx + 1);
                                 neg_map[id0] = true;
                                 pos_map[id2] = true;
-                                neg.triangles.push_back({id0, -1 * f1_idx - 1, -1 * f2_idx - 1});
-                                pos.triangles.push_back({id2, -1 * f2_idx - 1, -1 * f1_idx - 1});
+                                neg.triangles.emplace_back(id0, -1 * f1_idx - 1, -1 * f2_idx - 1);
+                                pos.triangles.emplace_back(id2, -1 * f2_idx - 1, -1 * f1_idx - 1);
                             }
                         }
                     }
@@ -900,35 +910,36 @@ namespace coacd
                     {
                         // f1 = f2 = p2
                         addPoint(vertex_map, border, p2, id2, idx);
-                        edge_map[pair(id1, id2)] = vertex_map[id2];
-                        edge_map[pair(id2, id1)] = vertex_map[id2];
-                        edge_map[pair(id2, id0)] = vertex_map[id2];
-                        edge_map[pair(id0, id2)] = vertex_map[id2];
+                        const int v = vertex_map[id2];
+                        edge_map[pair(id1, id2)] = v;
+                        edge_map[pair(id2, id1)] = v;
+                        edge_map[pair(id2, id0)] = v;
+                        edge_map[pair(id0, id2)] = v;
 
                         // f0
                         addEdgePoint(edge_map, border, pi0, id0, id1, idx);
                         int f0_idx = edge_map[pair(id0, id1)];
-                        int f1_idx = vertex_map[id2];
+                        int f1_idx = v;
                         if (s0 == 1)
                         {
                             if (f0_idx != f1_idx)
                             {
-                                border_edges.push_back(pair(f0_idx + 1, f1_idx + 1));
+                                border_edges.emplace_back(f0_idx + 1, f1_idx + 1);
                                 pos_map[id0] = true;
                                 neg_map[id1] = true;
-                                pos.triangles.push_back({id0, -1 * f0_idx - 1, -1 * f1_idx - 1});
-                                neg.triangles.push_back({id1, -1 * f1_idx - 1, -1 * f0_idx - 1});
+                                pos.triangles.emplace_back(id0, -1 * f0_idx - 1, -1 * f1_idx - 1);
+                                neg.triangles.emplace_back(id1, -1 * f1_idx - 1, -1 * f0_idx - 1);
                             }
                         }
                         else
                         {
                             if (f1_idx != f0_idx)
                             {
-                                border_edges.push_back(pair(f1_idx + 1, f0_idx + 1));
+                                border_edges.emplace_back(f1_idx + 1, f0_idx + 1);
                                 neg_map[id0] = true;
                                 pos_map[id1] = true;
-                                neg.triangles.push_back({id0, -1 * f0_idx - 1, -1 * f1_idx - 1});
-                                pos.triangles.push_back({id1, -1 * f1_idx - 1, -1 * f0_idx - 1});
+                                neg.triangles.emplace_back(id0, -1 * f0_idx - 1, -1 * f1_idx - 1);
+                                pos.triangles.emplace_back(id1, -1 * f1_idx - 1, -1 * f0_idx - 1);
                             }
                         }
                     }
@@ -1015,6 +1026,7 @@ namespace coacd
             neg_z_min = min(neg_z_min, final_border[i][2]);
             neg_z_max = max(neg_z_max, final_border[i][2]);
         }
+
         pos.bbox[0] = pos_x_min;
         pos.bbox[1] = pos_x_max;
         pos.bbox[2] = pos_y_min;
@@ -1030,52 +1042,44 @@ namespace coacd
         neg.bbox[5] = neg_z_max;
 
         // triangles
-        for (int i = 0; i < (int)pos.triangles.size(); i++)
+        for (vec3i& triangle : pos.triangles)
         {
-            int f0, f1, f2;
-            if (pos.triangles[i][0] >= 0)
-                f0 = pos_proj[pos.triangles[i][0]] - 1;
+            if (triangle[0] >= 0)
+                triangle[0] = pos_proj[triangle[0]] - 1;
             else
-                f0 = -1 * pos.triangles[i][0] + pos_N - 1;
-            if (pos.triangles[i][1] >= 0)
-                f1 = pos_proj[pos.triangles[i][1]] - 1;
+                triangle[0] = -triangle[0] + pos_N - 1;
+            if (triangle[1] >= 0)
+                triangle[1] = pos_proj[triangle[1]] - 1;
             else
-                f1 = -1 * pos.triangles[i][1] + pos_N - 1;
-            if (pos.triangles[i][2] >= 0)
-                f2 = pos_proj[pos.triangles[i][2]] - 1;
+                triangle[1] = -triangle[1] + pos_N - 1;
+            if (triangle[2] >= 0)
+                triangle[2] = pos_proj[triangle[2]] - 1;
             else
-                f2 = -1 * pos.triangles[i][2] + pos_N - 1;
-
-            pos.triangles[i] = {f0, f1, f2};
-        }
-        for (int i = 0; i < (int)neg.triangles.size(); i++)
-        {
-            int f0, f1, f2;
-            if (neg.triangles[i][0] >= 0)
-                f0 = neg_proj[neg.triangles[i][0]] - 1;
-            else
-                f0 = -1 * neg.triangles[i][0] + neg_N - 1;
-            if (neg.triangles[i][1] >= 0)
-                f1 = neg_proj[neg.triangles[i][1]] - 1;
-            else
-                f1 = -1 * neg.triangles[i][1] + neg_N - 1;
-            if (neg.triangles[i][2] >= 0)
-                f2 = neg_proj[neg.triangles[i][2]] - 1;
-            else
-                f2 = -1 * neg.triangles[i][2] + neg_N - 1;
-
-            neg.triangles[i] = {f0, f1, f2};
+                triangle[2] = -triangle[2] + pos_N - 1;
         }
 
-        for (int i = 0; i < (int)final_triangles.size(); i++)
+        for (vec3i& triangle : neg.triangles)
+        {
+            if (triangle[0] >= 0)
+                triangle[0] = neg_proj[triangle[0]] - 1;
+            else
+                triangle[0] = -triangle[0] + neg_N - 1;
+            if (triangle[1] >= 0)
+                triangle[1] = neg_proj[triangle[1]] - 1;
+            else
+                triangle[1] = -triangle[1] + neg_N - 1;
+            if (triangle[2] >= 0)
+                triangle[2] = neg_proj[triangle[2]] - 1;
+            else
+                triangle[2] = -triangle[2] + neg_N - 1;
+        }
+
+        const int final_count = (int)final_triangles.size();
+        for (int i = 0; i < final_count; i++)
         {
             cut_area += Area(final_border[final_triangles[i][0] - 1], final_border[final_triangles[i][1] - 1], final_border[final_triangles[i][2] - 1]);
-            pos.triangles.push_back({pos_N + border_map[final_triangles[i][0]] - 1,
-                                     pos_N + border_map[final_triangles[i][1]] - 1,
-                                     pos_N + border_map[final_triangles[i][2]] - 1});
-            neg.triangles.push_back({neg_N + border_map[final_triangles[i][2]] - 1,
-                                     neg_N + border_map[final_triangles[i][1]] - 1,
-                                     neg_N + border_map[final_triangles[i][0]] - 1});
+            pos.triangles.emplace_back(pos_N + border_map[final_triangles[i][0]] - 1, pos_N + border_map[final_triangles[i][1]] - 1, pos_N + border_map[final_triangles[i][2]] - 1);
+            neg.triangles.emplace_back(neg_N + border_map[final_triangles[i][2]] - 1, neg_N + border_map[final_triangles[i][1]] - 1, neg_N + border_map[final_triangles[i][0]] - 1);
         }
 
         return true;
