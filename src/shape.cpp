@@ -2,25 +2,6 @@
 
 namespace coacd
 {
-    double Area(vec3d p0, vec3d p1, vec3d p2)
-    {
-        const double x = p1[0] * p0[1] - p2[0] * p0[1] - p0[0] * p1[1] + p2[0] * p1[1] + p0[0] * p2[1] - p1[0] * p2[1];
-        const double y = p1[0] * p0[2] - p2[0] * p0[2] - p0[0] * p1[2] + p2[0] * p1[2] + p0[0] * p2[2] - p1[0] * p2[2];
-        const double z = p1[1] * p0[2] - p2[1] * p0[2] - p0[1] * p1[2] + p2[1] * p1[2] + p0[1] * p2[2] - p1[1] * p2[2];
-        return 0.5 * sqrt(x*x + y*y + z*z);
-    }
-
-    double Volume(vec3d p1, vec3d p2, vec3d p3)
-    {
-        double v321 = p3[0] * p2[1] * p1[2];
-        double v231 = p2[0] * p3[1] * p1[2];
-        double v312 = p3[0] * p1[1] * p2[2];
-        double v132 = p1[0] * p3[1] * p2[2];
-        double v213 = p2[0] * p1[1] * p3[2];
-        double v123 = p1[0] * p2[1] * p3[2];
-        return (1.0 / 6.0) * (-v321 + v231 + v312 - v132 - v213 + v123);
-    }
-
     void Diagonalize(const array<array<double, 3>, 3>& A, array<array<double, 3>, 3>& Q, array<array<double, 3>, 3>& D)
     {
         // A must be a symmetric matrix.

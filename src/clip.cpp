@@ -174,15 +174,17 @@ namespace coacd
         double x_min = INF, x_max = -INF, y_min = INF, y_max = -INF;
         for (int i = 0; i < count; i++)
         {
-            const double x = border[i][0] - T[0];
-            const double y = border[i][1] - T[1];
-            const double z = border[i][2] - T[2];
+            const vec3d& v = border[i];
+            const double x = v[0] - T[0];
+            const double y = v[1] - T[1];
+            const double z = v[2] - T[2];
 
             const double px = R[0][0] * x + R[0][1] * y + R[0][2] * z;
             const double py = R[1][0] * x + R[1][1] * y + R[1][2] * z;
 
-            points[i][0] = px;
-            points[i][1] = py;
+            array<double, 2>& p = points[i];
+            p[0] = px;
+            p[1] = py;
 
             x_min = min(x_min, px);
             x_max = max(x_max, px);
@@ -190,19 +192,19 @@ namespace coacd
             y_max = max(y_max, py);
         }
 
-        int borderN = (int)points.size();
-
         bool is_success;
         Triangulate(points, border_edges, border_triangles, nodes, is_success, 0);
 
         if (!is_success) return 2;
 
-        border.reserve(borderN);
-        for (int i = count; i < borderN; i++)
+        const int n = (int)points.size();
+        border.reserve(n);
+        for (int i = count; i < n; i++)
         {
-            const double x = R[0][0] * nodes[i][0] + R[1][0] * nodes[i][1] + T[0];
-            const double y = R[0][1] * nodes[i][0] + R[1][1] * nodes[i][1] + T[1];
-            const double z = R[0][2] * nodes[i][0] + R[1][2] * nodes[i][1] + T[2];
+            const std::array<double, 2>& node = nodes[i];
+            const double x = R[0][0] * node[0] + R[1][0] * node[1] + T[0];
+            const double y = R[0][1] * node[0] + R[1][1] * node[1] + T[1];
+            const double z = R[0][2] * node[0] + R[1][2] * node[1] + T[2];
             border.emplace_back(x, y, z);
         }
 
@@ -220,13 +222,13 @@ namespace coacd
         std::vector<bool> remove_map;
 
         TrianglesCache()
-            : BFS_edges(),
-            edge_map(),
-            border_map(),
-            same_edge_map(),
-            overlap_map(),
-            add_vertex(),
-            remove_map()
+        : BFS_edges(),
+          edge_map(),
+          border_map(),
+          same_edge_map(),
+          overlap_map(),
+          add_vertex(),
+          remove_map()
         {
             // Nothing to do.
         }
@@ -625,21 +627,21 @@ namespace coacd
                         addPoint(vertex_map, border, p1, id1, idx);
                         addPoint(vertex_map, border, p2, id2, idx);
                         if (vertex_map[id1] != vertex_map[id2])
-                            border_edges.push_back(pair(vertex_map[id1] + 1, vertex_map[id2] + 1));
+                            border_edges.emplace_back(vertex_map[id1] + 1, vertex_map[id2] + 1);
                     }
                     else if (s0 == 0 && s1 == 1 && s2 == 0)
                     {
                         addPoint(vertex_map, border, p2, id2, idx);
                         addPoint(vertex_map, border, p0, id0, idx);
                         if (vertex_map[id2] != vertex_map[id0])
-                            border_edges.push_back(pair(vertex_map[id2] + 1, vertex_map[id0] + 1));
+                            border_edges.emplace_back(vertex_map[id2] + 1, vertex_map[id0] + 1);
                     }
                     else if (s0 == 0 && s1 == 0 && s2 == 1)
                     {
                         addPoint(vertex_map, border, p0, id0, idx);
                         addPoint(vertex_map, border, p1, id1, idx);
                         if (vertex_map[id0] != vertex_map[id1])
-                            border_edges.push_back(pair(vertex_map[id0] + 1, vertex_map[id1] + 1));
+                            border_edges.emplace_back(vertex_map[id0] + 1, vertex_map[id1] + 1);
                     }
                 }
             }
@@ -657,21 +659,21 @@ namespace coacd
                         addPoint(vertex_map, border, p2, id2, idx);
                         addPoint(vertex_map, border, p1, id1, idx);
                         if (vertex_map[id2] != vertex_map[id1])
-                            border_edges.push_back(pair(vertex_map[id2] + 1, vertex_map[id1] + 1));
+                            border_edges.emplace_back(vertex_map[id2] + 1, vertex_map[id1] + 1);
                     }
                     else if (s0 == 0 && s1 == -1 && s2 == 0)
                     {
                         addPoint(vertex_map, border, p0, id0, idx);
                         addPoint(vertex_map, border, p2, id2, idx);
                         if (vertex_map[id0] != vertex_map[id2])
-                            border_edges.push_back(pair(vertex_map[id0] + 1, vertex_map[id2] + 1));
+                            border_edges.emplace_back(vertex_map[id0] + 1, vertex_map[id2] + 1);
                     }
                     else if (s0 == 0 && s1 == 0 && s2 == -1)
                     {
                         addPoint(vertex_map, border, p1, id1, idx);
                         addPoint(vertex_map, border, p0, id0, idx);
                         if (vertex_map[id1] != vertex_map[id0])
-                            border_edges.push_back(pair(vertex_map[id1] + 1, vertex_map[id0] + 1));
+                            border_edges.emplace_back(vertex_map[id1] + 1, vertex_map[id0] + 1);
                     }
                 }
             }
@@ -698,7 +700,7 @@ namespace coacd
                     {
                         if (f1_idx != f0_idx)
                         {
-                            border_edges.push_back(pair(f1_idx + 1, f0_idx + 1)); // border
+                            border_edges.emplace_back(f1_idx + 1, f0_idx + 1); // border
                             pos_map[id1] = true;
                             neg_map[id0] = true;
                             neg_map[id2] = true;
@@ -717,7 +719,7 @@ namespace coacd
                     {
                         if (f0_idx != f1_idx)
                         {
-                            border_edges.push_back(pair(f0_idx + 1, f1_idx + 1)); // border
+                            border_edges.emplace_back(f0_idx + 1, f1_idx + 1); // border
                             neg_map[id1] = true;
                             pos_map[id0] = true;
                             pos_map[id2] = true;
@@ -747,7 +749,7 @@ namespace coacd
                     {
                         if (f2_idx != f1_idx)
                         {
-                            border_edges.push_back(pair(f2_idx + 1, f1_idx + 1));
+                            border_edges.emplace_back(f2_idx + 1, f1_idx + 1);
                             pos_map[id2] = true;
                             neg_map[id0] = true;
                             neg_map[id1] = true;
@@ -766,7 +768,7 @@ namespace coacd
                     {
                         if (f1_idx != f2_idx)
                         {
-                            border_edges.push_back(pair(f1_idx + 1, f2_idx + 1));
+                            border_edges.emplace_back(f1_idx + 1, f2_idx + 1);
                             neg_map[id2] = true;
                             pos_map[id0] = true;
                             pos_map[id1] = true;
@@ -795,7 +797,7 @@ namespace coacd
                     {
                         if (f0_idx != f2_idx)
                         {
-                            border_edges.push_back(pair(f0_idx + 1, f2_idx + 1));
+                            border_edges.emplace_back(f0_idx + 1, f2_idx + 1);
                             pos_map[id0] = true;
                             neg_map[id1] = true;
                             neg_map[id2] = true;
@@ -814,7 +816,7 @@ namespace coacd
                     {
                         if (f2_idx != f0_idx)
                         {
-                            border_edges.push_back(pair(f2_idx + 1, f0_idx + 1));
+                            border_edges.emplace_back(f2_idx + 1, f0_idx + 1);
                             neg_map[id0] = true;
                             pos_map[id1] = true;
                             pos_map[id2] = true;
@@ -954,8 +956,8 @@ namespace coacd
 
         if (border.size() > 2)
         {
-            int oriN = (int)border.size();
-            short flag = Triangulation(border, border_edges, border_triangles, plane);
+            const int oriN = (int)border.size();
+            const short flag = Triangulation(border, border_edges, border_triangles, plane);
             if (flag == 0)
                 RemoveOutlierTriangles(border, overlap, border_edges, border_triangles, oriN, border_map, final_border, final_triangles);
             else if (flag == 1)
@@ -978,53 +980,57 @@ namespace coacd
         int pos_idx = 0, neg_idx = 0;
         for (int i = 0; i < N; i++)
         {
+            const vec3d& p = mesh.points[i];
             if (pos_map[i] == true)
             {
-                pos.points.push_back(mesh.points[i]);
+                pos.points.push_back(p);
                 pos_proj[i] = ++pos_idx; // 0 means not exist, so all plus 1
 
-                pos_x_min = min(pos_x_min, mesh.points[i][0]);
-                pos_x_max = max(pos_x_max, mesh.points[i][0]);
-                pos_y_min = min(pos_y_min, mesh.points[i][1]);
-                pos_y_max = max(pos_y_max, mesh.points[i][1]);
-                pos_z_min = min(pos_z_min, mesh.points[i][2]);
-                pos_z_max = max(pos_z_max, mesh.points[i][2]);
+                pos_x_min = min(pos_x_min, p[0]);
+                pos_x_max = max(pos_x_max, p[0]);
+                pos_y_min = min(pos_y_min, p[1]);
+                pos_y_max = max(pos_y_max, p[1]);
+                pos_z_min = min(pos_z_min, p[2]);
+                pos_z_max = max(pos_z_max, p[2]);
             }
             if (neg_map[i] == true)
             {
                 neg.points.push_back(mesh.points[i]);
                 neg_proj[i] = ++neg_idx;
 
-                neg_x_min = min(neg_x_min, mesh.points[i][0]);
-                neg_x_max = max(neg_x_max, mesh.points[i][0]);
-                neg_y_min = min(neg_y_min, mesh.points[i][1]);
-                neg_y_max = max(neg_y_max, mesh.points[i][1]);
-                neg_z_min = min(neg_z_min, mesh.points[i][2]);
-                neg_z_max = max(neg_z_max, mesh.points[i][2]);
+                neg_x_min = min(neg_x_min, p[0]);
+                neg_x_max = max(neg_x_max, p[0]);
+                neg_y_min = min(neg_y_min, p[1]);
+                neg_y_max = max(neg_y_max, p[1]);
+                neg_z_min = min(neg_z_min, p[2]);
+                neg_z_max = max(neg_z_max, p[2]);
             }
         }
 
-        int pos_N = (int)pos.points.size(), neg_N = (int)neg.points.size();
+        const int pos_N = (int)pos.points.size();
+        const int neg_N = (int)neg.points.size();
 
         // border points & triangles
-        for (int i = 0; i < (int)final_border.size(); i++)
+        const int final_count = (int)final_border.size();
+        for (int i = 0; i < final_count; i++)
         {
-            pos.points.push_back(final_border[i]);
-            neg.points.push_back(final_border[i]);
+            const vec3d& p = final_border[i];
+            pos.points.push_back(p);
+            neg.points.push_back(p);
 
-            pos_x_min = min(pos_x_min, final_border[i][0]);
-            pos_x_max = max(pos_x_max, final_border[i][0]);
-            pos_y_min = min(pos_y_min, final_border[i][1]);
-            pos_y_max = max(pos_y_max, final_border[i][1]);
-            pos_z_min = min(pos_z_min, final_border[i][2]);
-            pos_z_max = max(pos_z_max, final_border[i][2]);
+            pos_x_min = min(pos_x_min, p[0]);
+            pos_x_max = max(pos_x_max, p[0]);
+            pos_y_min = min(pos_y_min, p[1]);
+            pos_y_max = max(pos_y_max, p[1]);
+            pos_z_min = min(pos_z_min, p[2]);
+            pos_z_max = max(pos_z_max, p[2]);
 
-            neg_x_min = min(neg_x_min, final_border[i][0]);
-            neg_x_max = max(neg_x_max, final_border[i][0]);
-            neg_y_min = min(neg_y_min, final_border[i][1]);
-            neg_y_max = max(neg_y_max, final_border[i][1]);
-            neg_z_min = min(neg_z_min, final_border[i][2]);
-            neg_z_max = max(neg_z_max, final_border[i][2]);
+            neg_x_min = min(neg_x_min, p[0]);
+            neg_x_max = max(neg_x_max, p[0]);
+            neg_y_min = min(neg_y_min, p[1]);
+            neg_y_max = max(neg_y_max, p[1]);
+            neg_z_min = min(neg_z_min, p[2]);
+            neg_z_max = max(neg_z_max, p[2]);
         }
 
         pos.bbox[0] = pos_x_min;
@@ -1074,12 +1080,13 @@ namespace coacd
                 triangle[2] = -triangle[2] + neg_N - 1;
         }
 
-        const int final_count = (int)final_triangles.size();
-        for (int i = 0; i < final_count; i++)
+        const int final_triangle_count = (int)final_triangles.size();
+        for (int i = 0; i < final_triangle_count; i++)
         {
-            cut_area += Area(final_border[final_triangles[i][0] - 1], final_border[final_triangles[i][1] - 1], final_border[final_triangles[i][2] - 1]);
-            pos.triangles.emplace_back(pos_N + border_map[final_triangles[i][0]] - 1, pos_N + border_map[final_triangles[i][1]] - 1, pos_N + border_map[final_triangles[i][2]] - 1);
-            neg.triangles.emplace_back(neg_N + border_map[final_triangles[i][2]] - 1, neg_N + border_map[final_triangles[i][1]] - 1, neg_N + border_map[final_triangles[i][0]] - 1);
+            const vec3i& triangle = final_triangles[i];
+            cut_area += Area(final_border[triangle[0] - 1], final_border[triangle[1] - 1], final_border[triangle[2] - 1]);
+            pos.triangles.emplace_back(pos_N + border_map[triangle[0]] - 1, pos_N + border_map[triangle[1]] - 1, pos_N + border_map[triangle[2]] - 1);
+            neg.triangles.emplace_back(neg_N + border_map[triangle[2]] - 1, neg_N + border_map[triangle[1]] - 1, neg_N + border_map[triangle[0]] - 1);
         }
 
         return true;

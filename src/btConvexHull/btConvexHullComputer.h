@@ -98,7 +98,7 @@ public:
     // {
     //     return compute(points);
     // }
-    btScalar compute(vector<coacd::vec3d> points, btScalar shrink, btScalar shrinkClamp);
+    btScalar compute(const vector<coacd::vec3d>& points, btScalar shrink, btScalar shrinkClamp);
 };
 
 #endif //BT_CONVEX_HULL_COMPUTER_H

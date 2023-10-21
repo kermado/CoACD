@@ -814,7 +814,7 @@ private:
 public:
     Vertex* vertexList;
 
-    void compute(vector<coacd::vec3d> points);
+    void compute(const vector<coacd::vec3d>& points);
 
     btVector3 getCoordinates(const Vertex* v);
 
@@ -1764,10 +1764,10 @@ static bool pointCmp(const btConvexHullInternal::Point32& p, const btConvexHullI
     return (p.y < q.y) || ((p.y == q.y) && ((p.x < q.x) || ((p.x == q.x) && (p.z < q.z))));
 }
 
-void btConvexHullInternal::compute(vector<coacd::vec3d> vertices)
+void btConvexHullInternal::compute(const vector<coacd::vec3d>& vertices)
 {
     btVector3 min(btScalar(1e30), btScalar(1e30), btScalar(1e30)), max(btScalar(-1e30), btScalar(-1e30), btScalar(-1e30));
-    size_t count = (int)vertices.size();
+    const size_t count = (int)vertices.size();
     for (int32_t i = 0; i < count; i++) {
         btVector3 p((btScalar)vertices[i][0], (btScalar)vertices[i][1], (btScalar)vertices[i][2]);
         min.setMin(p);
@@ -1803,7 +1803,8 @@ void btConvexHullInternal::compute(vector<coacd::vec3d> vertices)
     btAlignedObjectArray<Point32> points;
     points.resize(count);
     for (int32_t i = 0; i < count; i++) {
-        btVector3 p((btScalar)vertices[i][0], (btScalar)vertices[i][1], (btScalar)vertices[i][2]);
+        const coacd::vec3d& vert = vertices[i];
+        btVector3 p((btScalar)vert[0], (btScalar)vert[1], (btScalar)vert[2]);
         p = (p - center) * s;
         points[i].x = (int32_t)p[medAxis];
         points[i].y = (int32_t)p[maxAxis];
@@ -2354,7 +2355,7 @@ static int32_t getVertexCopy(btConvexHullInternal::Vertex* vertex, btAlignedObje
     return index;
 }
 
-btScalar btConvexHullComputer::compute(vector<coacd::vec3d> points, btScalar shrink, btScalar shrinkClamp)
+btScalar btConvexHullComputer::compute(const vector<coacd::vec3d>& points, btScalar shrink, btScalar shrinkClamp)
 {
     size_t count = points.size();
     if (count <= 0) {

@@ -127,21 +127,22 @@ namespace coacd
             return;
         }
 
-        const auto &indexBuffer = hull.getIndexBuffer();
-        const auto &vertexBuffer = hull.getVertexBuffer();
+        const std::vector<size_t>& indexBuffer = hull.getIndexBuffer();
+        const quickhull::VertexDataSource<float>& vertexBuffer = hull.getVertexBuffer();
 
         const size_t vc = vertexBuffer.size();
         convex.points.reserve(vc);
         for (size_t i(0); i < vc; i++)
         {
-            convex.points.push_back({vertexBuffer[i].x, vertexBuffer[i].y, vertexBuffer[i].z});
+            const quickhull::Vector3<float>& vert = vertexBuffer[i];
+            convex.points.emplace_back(vert.x, vert.y, vert.z);
         }
 
         const size_t ic = indexBuffer.size();
         convex.triangles.reserve(ic / 3);
         for (size_t i(0); i < ic; i += 3)
         {
-            convex.triangles.push_back({(int)indexBuffer[i + 2], (int)indexBuffer[i + 1], (int)indexBuffer[i]});
+            convex.triangles.emplace_back((int)indexBuffer[i + 2], (int)indexBuffer[i + 1], (int)indexBuffer[i]);
         }
     }
 
@@ -149,9 +150,11 @@ namespace coacd
     {
         btConvexHullComputer ch;
         ch.compute(points, -1.0, -1.0);
-        for (int32_t v = 0; v < ch.vertices.size(); v++)
+        const int32_t count = ch.vertices.size();
+        for (int32_t v = 0; v < count; v++)
         {
-            convex.points.push_back({ch.vertices[v].getX(), ch.vertices[v].getY(), ch.vertices[v].getZ()});
+            const btVector3& vert = ch.vertices[v];
+            convex.points.emplace_back(vert.getX(), vert.getY(), vert.getZ());
         }
         const int32_t nt = ch.faces.size();
         for (int32_t t = 0; t < nt; ++t)
@@ -163,7 +166,7 @@ namespace coacd
             int32_t c = edge->getTargetVertex();
             while (c != a)
             {
-                convex.triangles.push_back({(int)a, (int)b, (int)c});
+                convex.triangles.emplace_back((int)a, (int)b, (int)c);
                 edge = edge->getNextEdgeOfFace();
                 b = c;
                 c = edge->getTargetVertex();

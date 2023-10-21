@@ -64,7 +64,15 @@ namespace coacd
         bool pFlag;       // whether three point form exists
         inline short CutSide(vec3d p0, vec3d p1, vec3d p2, Plane plane);
         inline short BoolSide(const vec3d& p) const;
-        inline short Side(const vec3d& p, double eps = 1e-6) const;
+        inline short Side(const vec3d& p, double eps = 1e-6) const
+        {
+            const double res = p[0] * a + p[1] * b + p[2] * c + d;
+            if (res > eps)
+                return 1;
+            else if (res < -eps)
+                return -1;
+            return 0;
+        }
         inline bool IntersectSegment(const vec3d& p1, const vec3d& p2, vec3d &pi, const double eps = 1e-6);
         inline Plane() : pFlag(false) {}
         inline Plane(double _a, double _b, double _c, double _d) : a(_a), b(_b), c(_c), d(_d), pFlag(false) {}
@@ -80,7 +88,10 @@ namespace coacd
         return (v[0] * w[0] + v[1] * w[1] + v[2] * w[2]) > 0.0;
     }
 
-    vec3d CrossProduct(const vec3d& v, const vec3d& w);
+    inline vec3d CrossProduct(const vec3d& v, const vec3d& w)
+    {
+        return vec3d(v[1] * w[2] - v[2] * w[1], v[2] * w[0] - v[0] * w[2], v[0] * w[1] - v[1] * w[0]);
+    }
 
     inline vec3d CalFaceNormal(const vec3d& p1, const vec3d& p2, const vec3d& p3)
     {
@@ -94,17 +105,29 @@ namespace coacd
 
         const vec3d n = CrossProduct(v, w);
         const double l = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
-        return { n[0] / l, n[1] / l, n[2] / l };
+        return vec3d(n[0] / l, n[1] / l, n[2] / l);
     }
 
-    double Area(vec3d p0, vec3d p1, vec3d p2);
-    double Volume(vec3d p1, vec3d p2, vec3d p3);
-    void Diagonalize(const array<array<double, 3>, 3>& A, array<array<double, 3>, 3>& Q, array<array<double, 3>, 3>& D);
-
-    inline vec3d CrossProduct(const vec3d& v, const vec3d& w)
+    inline double Area(const vec3d& p0, const vec3d& p1, const vec3d& p2)
     {
-        return { v[1] * w[2] - v[2] * w[1], v[2] * w[0] - v[0] * w[2], v[0] * w[1] - v[1] * w[0] };
+        const double x = p1[0] * p0[1] - p2[0] * p0[1] - p0[0] * p1[1] + p2[0] * p1[1] + p0[0] * p2[1] - p1[0] * p2[1];
+        const double y = p1[0] * p0[2] - p2[0] * p0[2] - p0[0] * p1[2] + p2[0] * p1[2] + p0[0] * p2[2] - p1[0] * p2[2];
+        const double z = p1[1] * p0[2] - p2[1] * p0[2] - p0[1] * p1[2] + p2[1] * p1[2] + p0[1] * p2[2] - p1[1] * p2[2];
+        return 0.5 * sqrt(x * x + y * y + z * z);
     }
+
+    inline double Volume(const vec3d& p1, const vec3d& p2, const vec3d& p3)
+    {
+        const double v321 = p3[0] * p2[1] * p1[2];
+        const double v231 = p2[0] * p3[1] * p1[2];
+        const double v312 = p3[0] * p1[1] * p2[2];
+        const double v132 = p1[0] * p3[1] * p2[2];
+        const double v213 = p2[0] * p1[1] * p3[2];
+        const double v123 = p1[0] * p2[1] * p3[2];
+        return (1.0 / 6.0) * (-v321 + v231 + v312 - v132 - v213 + v123);
+    }
+
+    void Diagonalize(const array<array<double, 3>, 3>& A, array<array<double, 3>, 3>& Q, array<array<double, 3>, 3>& D);
 
     inline short Plane::CutSide(vec3d p0, vec3d p1, vec3d p2, Plane plane)
     {
@@ -118,16 +141,6 @@ namespace coacd
     {
         const double res = p[0] * a + p[1] * b + p[2] * c + d;
         return short((res > 0.0) ? 1 : -1);
-    }
-
-    inline short Plane::Side(const vec3d& p, double eps) const
-    {
-        const double res = p[0] * a + p[1] * b + p[2] * c + d;
-        if (res > eps)
-            return 1;
-        else if (res < -eps)
-            return -1;
-        return 0;
     }
 
     inline bool Plane::IntersectSegment(const vec3d& p1, const vec3d& p2, vec3d &pi, const double eps)
