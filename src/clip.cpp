@@ -1,6 +1,7 @@
 #include "clip.h"
-#define REAL double
-#include "triangle.h"
+#include "process.h"
+#include "CDTUtils.h"
+#include "CDT.h"
 
 namespace coacd
 {
@@ -141,11 +142,10 @@ namespace coacd
 
     struct TriangulateCache
     {
-        vector<array<double, 2>> points;
-        vector<array<double, 2>> nodes;
+        vector<CDT::V2d<double>> points;
 
         TriangulateCache()
-        : points(), nodes()
+        : points()
         {
             // Nothing to do.
         }
@@ -156,17 +156,21 @@ namespace coacd
             return instance;
         }
 
-        void clear()
-        {
-            nodes.clear();
-        }
-
         void prepare(const int p_length)
         {
-            clear();
             points.resize(p_length);
         }
     };
+
+    static int edge_start(const pair& p)
+    {
+        return p.m[0] - 1;
+    }
+
+    static int edge_end(const pair& p)
+    {
+        return p.m[1] - 1;
+    }
 
     short Triangulation(vector<vec3d>& border, const vector<pair>& border_edges, vector<vec3i>& border_triangles, Plane& plane)
     {
@@ -178,8 +182,7 @@ namespace coacd
 
         TriangulateCache& cache = TriangulateCache::get();
         cache.prepare(count);
-        vector<array<double, 2>>& points = cache.points;
-        vector<array<double, 2>>& nodes = cache.nodes;
+        vector<CDT::V2d<double>>& points = cache.points;
 
         const double R00 = R[0][0];
         const double R01 = R[0][1];
@@ -203,31 +206,40 @@ namespace coacd
             const double px = R00 * x + R01 * y + R02 * z;
             const double py = R10 * x + R11 * y + R12 * z;
 
-            array<double, 2>& p = points[i];
-            p[0] = px;
-            p[1] = py;
+            CDT::V2d<double>& p = points[i];
+            p.x = px;
+            p.y = py;
 
             x_min = min(x_min, px);
             x_max = max(x_max, px);
             y_min = min(y_min, py);
             y_max = max(y_max, py);
         }
+        
+        CDT::Triangulation<double> cdt;
+        cdt.insertVertices(points);
+        cdt.insertEdges(border_edges.begin(), border_edges.end(), edge_start, edge_end);
+        cdt.eraseSuperTriangle();
 
-        bool is_success;
-        Triangulate(points, border_edges, border_triangles, nodes, is_success, 0);
-
-        if (!is_success) { return 2; }
-
-        const int n = (int)points.size();
-        border.reserve(n);
-        for (int i = count; i < n; i++)
+        const CDT::TriangleVec& triangles = cdt.triangles;
+        const int triangle_count = (int)triangles.size();
+        border_triangles.reserve(triangle_count);
+        for (int i = 0; i < triangle_count; i++)
         {
-            const std::array<double, 2>& node = nodes[i];
-            const double N0 = node[0];
-            const double N1 = node[1];
-            const double x = R00 * N0 + R10 * N1 + T0;
-            const double y = R01 * N0 + R11 * N1 + T1;
-            const double z = R02 * N0 + R12 * N1 + T2;
+            const CDT::Triangle& triangle = triangles[i];
+            const CDT::VerticesArr3& vertices = triangle.vertices;
+            border_triangles.emplace_back((int)vertices[0] + 1, (int)vertices[1] + 1, (int)vertices[2] + 1);
+        }
+
+        const vector<CDT::V2d<double>>& out_vertices = cdt.vertices;
+        const int point_count = (int)points.size();
+        border.reserve(point_count);
+        for (int i = count; i < point_count; i++)
+        {
+            const CDT::V2d<double>& vertex = out_vertices[i];
+            const double x = R00 * vertex.x + R10 * vertex.y + T0;
+            const double y = R01 * vertex.x + R11 * vertex.y + T1;
+            const double z = R02 * vertex.x + R12 * vertex.y + T2;
             border.emplace_back(x, y, z);
         }
 

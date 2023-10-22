@@ -163,7 +163,7 @@ namespace coacd
                     seen[seen_count++] = idx;
                 }
 
-            next_point: __noop();
+            next_point: (void)0;
             }
 
         next_hull_point:
@@ -201,7 +201,7 @@ namespace coacd
                     seen[seen_count++] = idx;
                 }
 
-            next_point2: __noop();
+            next_point2: (void)0;
             }
 
         next_hull_point2:
