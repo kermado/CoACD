@@ -145,7 +145,10 @@ namespace coacd
         {
             vector<double> _current_costs;
             vector<Part> _current_parts;
-            for (int i = 0; i < (int)current_parts.size(); i++)
+            const int count = (int)current_parts.size();
+            _current_costs.reserve(count + 1);
+            _current_parts.reserve(count + 1);
+            for (int i = 0; i < count; i++)
             {
                 if (i != worst_part_idx)
                 {
@@ -652,27 +655,26 @@ namespace coacd
 
     bool ComputeBestRvClippingPlane(Model &m, Params &params, vector<Plane> &planes, Plane &bestplane, double &bestcost)
     {
-        if ((int)planes.size() == 0)
-            return false;
+        if ((int)planes.size() == 0) { return false; }
         double H_min = INF;
         double cut_area;
         bool flag;
-        for (int i = 0; i < (int)planes.size(); i++)
+        const int count = (int)planes.size();
+        for (int i = 0; i < count; i++)
         {
             Model pos, neg, posCH, negCH;
 
             flag = Clip(m, pos, neg, planes[i], cut_area);
             double H;
             if (!flag)
+            {
                 H = INF;
+            }
             else
             {
-                if (pos.points.size() <= 0 || neg.points.size() <= 0)
-                    continue;
-
+                if (pos.points.size() <= 0 || neg.points.size() <= 0) { continue; }
                 pos.ComputeCH(posCH);
                 neg.ComputeCH(negCH);
-
                 H = ComputeTotalRv(m, pos, posCH, neg, negCH, params.rv_k, planes[i]);
             }
 
@@ -691,7 +693,8 @@ namespace coacd
     {
         double reward = 0;
         double h_max = 0;
-        for (int i = 0; i < (int)current_costs.size(); i++)
+        const int count = (int)current_costs.size();
+        for (int i = 0; i < count; i++)
         {
             double h = current_costs[i];
             if (h > h_max)
@@ -736,10 +739,7 @@ namespace coacd
             Plane bestplane;
             double bestcost, cut_area;
             ComputeAxesAlignedClippingPlanes(current_state.current_parts[current_state.worst_part_idx].current_mesh, MCTS_RANDOM_CUT, planes);
-            if ((int)planes.size() == 0)
-            {
-                break;
-            }
+            if ((int)planes.size() == 0) { break; }
             ComputeBestRvClippingPlane(current_state.current_parts[current_state.worst_part_idx].current_mesh, params, planes, bestplane, bestcost);
 
             Model pos, neg, posCH, negCH;
@@ -747,9 +747,14 @@ namespace coacd
             assert(clipf && "Wrong MCTS clip proposal!");
             
             current_path.push_back(bestplane);
+
+            const int count = (int)current_state.current_parts.size();
             vector<double> _current_costs;
             vector<Part> _current_parts;
-            for (int i = 0; i < (int)current_state.current_parts.size(); i++)
+            _current_costs.reserve(count + 1);
+            _current_parts.reserve(count + 1);
+
+            for (int i = 0; i < count; i++)
             {
                 if (i != current_state.worst_part_idx)
                 {
@@ -757,6 +762,7 @@ namespace coacd
                     _current_parts.push_back(current_state.current_parts[i]);
                 }
             }
+
             pos.ComputeCH(posCH);
             neg.ComputeCH(negCH);
             double cost_pos = ComputeRv(pos, posCH, params.rv_k);

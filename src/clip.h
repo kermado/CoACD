@@ -41,7 +41,8 @@ namespace coacd
             const int count = (int)border.size();
             for (int i = 0; i < count; i++)
             {
-                if ((fabs(border[i][0] - pt[0])) < 1e-4 && (fabs(border[i][1] - pt[1])) < 1e-4 && (fabs(border[i][2] - pt[2])) < 1e-4)
+                const vec3d& br = border[i];
+                if (fabs(br[0] - pt[0]) < 1e-4 && fabs(br[1] - pt[1]) < 1e-4 && fabs(br[2] - pt[2]) < 1e-4)
                 {
                     flag = i;
                     break;
@@ -70,7 +71,8 @@ namespace coacd
             const int count = (int)border.size();
             for (int i = 0; i < count; i++)
             {
-                if ((fabs(border[i][0] - pt[0])) < 1e-4 && (fabs(border[i][1] - pt[1])) < 1e-4 && (fabs(border[i][2] - pt[2])) < 1e-4)
+                const vec3d& br = border[i];
+                if (fabs(br[0] - pt[0]) < 1e-4 && fabs(br[1] - pt[1]) < 1e-4 && fabs(br[2] - pt[2]) < 1e-4)
                 {
                     flag = i;
                     break;
