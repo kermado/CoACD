@@ -12,7 +12,7 @@ void RecoverParts(vector<Model> &meshes, vector<double> bbox,
   }
 }
 
-std::vector<Mesh> CoACD(Mesh const &input, std::atomic<bool>& cancel, std::atomic<uint32_t>& progress, double threshold,
+std::vector<Mesh> CoACD(Mesh const &input, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress, double threshold,
                         int max_convex_hull, std::string preprocess_mode,
                         int prep_resolution, int sample_resolution,
                         int mcts_nodes, int mcts_iteration, int mcts_max_depth,

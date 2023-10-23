@@ -868,7 +868,7 @@ namespace coacd
         return;
     }
 
-    Node *MonteCarloTreeSearch(Params &params, Node *node, vector<Plane> &best_path, std::atomic<bool>& cancel)
+    Node *MonteCarloTreeSearch(Params &params, Node *node, vector<Plane> &best_path, const std::atomic<bool>& cancel)
     {
         int computation_budget = params.mcts_iteration;
         Model initial_mesh = node->get_state()->current_parts[0].current_mesh, initial_ch;

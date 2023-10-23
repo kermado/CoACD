@@ -20,7 +20,7 @@ struct Mesh {
   std::vector<vec3i> indices;
 };
 
-std::vector<Mesh> CoACD(Mesh const &input, std::atomic<bool>& cancel, std::atomic<uint32_t>& progress, double threshold = 0.05,
+std::vector<Mesh> CoACD(Mesh const &input, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress, double threshold = 0.05,
                         int max_convex_hull = -1, std::string preprocess = "auto",
                         int prep_resolution = 50, int sample_resolution = 2000,
                         int mcts_nodes = 20, int mcts_iteration = 150,

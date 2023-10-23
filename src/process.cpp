@@ -34,7 +34,7 @@ namespace coacd
         merge.ComputeCH(ch);
     }
 
-    double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, std::atomic<bool>& cancel, double epsilon, double threshold)
+    double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, const std::atomic<bool>& cancel, double epsilon, double threshold)
     {
         logger::info(" - Merge Convex Hulls");
         size_t nConvexHulls = (size_t)cvxs.size();
@@ -201,7 +201,7 @@ namespace coacd
         return h;
     }
 
-    vector<Model> Compute(Model &mesh, Params &params, std::atomic<bool>& cancel, std::atomic<uint32_t>& progress)
+    vector<Model> Compute(Model &mesh, Params &params, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress)
     {
         random_engine.seed(params.seed);
 
