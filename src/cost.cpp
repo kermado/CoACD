@@ -8,26 +8,17 @@ namespace coacd
 
   double ComputeRv(Model &tmesh1, Model &tmesh2, double k, double epsilon)
   {
-    double v1, v2;
-    v1 = MeshVolume(tmesh1);
-    v2 = MeshVolume(tmesh2);
-
-    double d = pow(3 * fabs(v1 - v2) / (4 * Pi), 1.0 / 3) * k;
-
-    return d;
+    const double v1 = MeshVolume(tmesh1);
+    const double v2 = MeshVolume(tmesh2);
+    return cbrt(3.0 * fabs(v1 - v2) / (4.0 * Pi)) * k;
   }
 
   double ComputeRv(Model &cvx1, Model &cvx2, Model &cvxCH, double k, double epsilon)
   {
-    double v1, v2, v3;
-
-    v1 = MeshVolume(cvx1);
-    v2 = MeshVolume(cvx2);
-    v3 = MeshVolume(cvxCH);
-
-    double d = pow(3 * fabs(v1 + v2 - v3) / (4 * Pi), 1.0 / 3) * k;
-
-    return d;
+    const double v1 = MeshVolume(cvx1);
+    const double v2 = MeshVolume(cvx2);
+    const double v3 = MeshVolume(cvxCH);
+    return cbrt(3.0 * fabs(v1 + v2 - v3) / (4 * Pi)) * k;
   }
 
   double ComputeHb(Model &tmesh1, Model &tmesh2, unsigned int resolution, unsigned int seed, bool flag)
@@ -41,10 +32,7 @@ namespace coacd
     if (!((int)samples1.size() > 0 && (int)samples2.size() > 0))
       return INF;
 
-    double h;
-    h = face_hausdorff_distance(tmesh1, samples1, sample_tri_ids1, tmesh2, samples2, sample_tri_ids2);
-
-    return h;
+    return face_hausdorff_distance(tmesh1, samples1, sample_tri_ids1, tmesh2, samples2, sample_tri_ids2);
   }
   double ComputeHb(Model &cvx1, Model &cvx2, Model &cvxCH, unsigned int resolution, unsigned int seed)
   {
@@ -60,16 +48,13 @@ namespace coacd
     if (!((int)samples1.size() > 0 && (int)samples2.size() > 0))
       return INF;
 
-    double h = face_hausdorff_distance(cvx, samples1, sample_tri_ids1, cvxCH, samples2, sample_tri_ids2);
-
-    return h;
+    return face_hausdorff_distance(cvx, samples1, sample_tri_ids1, cvxCH, samples2, sample_tri_ids2);
   }
 
   double ComputeTotalRv(Model &mesh, Model &volume1, Model &volumeCH1, Model &volume2, Model &volumeCH2, double k, Plane &plane, double epsilon)
   {
     double h_pos = ComputeRv(volume1, volumeCH1, k, epsilon);
     double h_neg = ComputeRv(volume2, volumeCH2, k, epsilon);
-
     return max(h_pos, h_neg);
   }
 
@@ -77,7 +62,6 @@ namespace coacd
   {
     double h1 = ComputeRv(tmesh1, tmesh2, k, epsilon);
     double h2 = ComputeHb(tmesh1, tmesh2, resolution, seed, flag);
-
     return max(h1, h2);
   }
 
@@ -85,7 +69,6 @@ namespace coacd
   {
     double h1 = ComputeRv(cvx1, cvx2, cvxCH, k, epsilon);
     double h2 = ComputeHb(cvx1, cvx2, cvxCH, resolution + 2000, seed);
-
     return max(h1, h2);
   }
 
@@ -119,8 +102,9 @@ namespace coacd
     for (int i = 0; i < nA; i++)
     {
       size_t num_results = 1;
+      vec3d& XAi = XA[i];
 
-      double query_pt[3] = {XA[i][0], XA[i][1], XA[i][2]};
+      double query_pt[3] = {XAi[0], XAi[1], XAi[2]};
 
       std::vector<size_t> ret_index(num_results);
       std::vector<double> out_dist_sqr(num_results);

@@ -226,6 +226,7 @@ namespace coacd
 #ifdef _OPENMP
 #pragma omp parallel for default(none) shared(InputParts, params, mesh, writelock, parts, pmeshs, tmp) private(cut_area)
 #endif
+            double concavity = 0.0;
             for (int p = 0; p < (int)InputParts.size(); p++)
             {
                 if (p % ((int)InputParts.size() / 10 + 1) == 0)
@@ -234,7 +235,8 @@ namespace coacd
                 Model pmesh = InputParts[p], pCH;
                 Plane bestplane;
                 pmesh.ComputeVCH(pCH);
-                double h = ComputeHCost(pmesh, pCH, params.rv_k, params.resolution, params.seed, 0.0001, false);
+                const double h = ComputeHCost(pmesh, pCH, params.rv_k, params.resolution, params.seed, 0.0001, false);
+                concavity = max(concavity, h);
 
                 if (h > params.threshold)
                 {
@@ -294,6 +296,7 @@ namespace coacd
 #endif
                 }
             }
+            std::cout << concavity << std::endl;
             logger::info("Processing [100.0%]");
             InputParts.clear();
             InputParts = tmp;

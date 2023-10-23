@@ -36,6 +36,8 @@
 #include <iterator>
 #include <algorithm>
 
+#include "../3rd/sort/pdqsort.h"
+
 #ifdef EMH_KEY
 #undef  EMH_KEY
 #undef  EMH_BUCKET
@@ -842,6 +844,13 @@ namespace emhash8 {
             return (Index*)(new_index);
         }
 
+        static inline bool compare_branchless(const value_type& lhs, const value_type& rhs)
+        {
+            const size_type hash_lhs = (size_type)hash_key(lhs) & _mask;
+            const size_type hash_rhs = (size_type)hash_key(rhs) & _mask;
+            return (hash_lhs < hash_rhs) || ((hash_lhs == hash_rhs) && lhs < rhs);
+        }
+
         bool reserve(size_type required_buckets)
         {
             if (_num_filled != required_buckets)
@@ -849,16 +858,7 @@ namespace emhash8 {
 
             _last = 0;
 
-            std::sort(_pairs, _pairs + _num_filled, [this](const value_type& l, const value_type& r) {
-                const auto hashl = (size_type)hash_key(l) & _mask, hashr = (size_type)hash_key(r) & _mask;
-                if (hashl != hashr)
-                    return hashl < hashr;
-#if 0
-                return hashl < hashr;
-#else
-                return l < r;
-#endif
-                });
+            pdqsort_branchless(_pairs, _pairs + _num_filled, compare_branchless);
 
             memset(_index, INACTIVE, sizeof(_index[0]) * _num_buckets);
             for (size_type slot = 0; slot < _num_filled; slot++) {

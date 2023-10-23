@@ -12,8 +12,8 @@
 
 #include "CDTUtils.h"
 #include "Triangulation.h"
-
 #include "remove_at.hpp"
+#include "../3rd/sort/pdqsort.h"
 
 #include <algorithm>
 #include <cassert>
@@ -232,8 +232,8 @@ CDT_EXPORT EdgeUSet extractEdgesFromTriangles(const TriangleVec& triangles);
  * @param pieceToOriginals maps pieces to original edges
  * @return mapping of original edges to pieces
  */
-CDT_EXPORT unordered_map<Edge, EdgeVec>
-EdgeToPiecesMapping(const unordered_map<Edge, EdgeVec>& pieceToOriginals);
+CDT_EXPORT emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>
+EdgeToPiecesMapping(const emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>& pieceToOriginals);
 
 /*!
  * Convert edge-to-pieces mapping into edge-to-split-vertices mapping
@@ -244,9 +244,7 @@ EdgeToPiecesMapping(const unordered_map<Edge, EdgeVec>& pieceToOriginals);
  * Split points are sorted from edge's start (v1) to end (v2)
  */
 template <typename T>
-CDT_EXPORT unordered_map<Edge, std::vector<VertInd> > EdgeToSplitVertices(
-    const unordered_map<Edge, EdgeVec>& edgeToPieces,
-    const std::vector<V2d<T> >& vertices);
+CDT_EXPORT emhash7::HashMap<Edge, std::vector<VertInd>, ankerl::unordered_dense::hash<Edge>> EdgeToSplitVertices(const emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>& edgeToPieces, const std::vector<V2d<T> >& vertices);
 
 /// @}
 
@@ -267,7 +265,7 @@ namespace boost
 template <typename T>
 struct hash<CDT::V2d<T> >
 {
-    size_t operator()(const CDT::V2d<T>& xy) const
+    inline size_t operator()(const CDT::V2d<T>& xy) const
     {
 #ifdef CDT_CXX11_IS_SUPPORTED
         typedef std::hash<T> Hasher;
@@ -296,11 +294,10 @@ DuplicatesInfo FindDuplicates(
     TGetVertexCoordX getX,
     TGetVertexCoordY getY)
 {
-    typedef unordered_map<V2d<T>, std::size_t> PosToIndex;
+    typedef emhash7::HashMap<V2d<T>, std::size_t, ankerl::unordered_dense::hash<V2d<T>>> PosToIndex;
     PosToIndex uniqueVerts;
     const std::size_t verticesSize = std::distance(first, last);
-    DuplicatesInfo di = {
-        std::vector<std::size_t>(verticesSize), std::vector<std::size_t>()};
+    DuplicatesInfo di = {std::vector<std::size_t>(verticesSize), std::vector<std::size_t>()};
     for(std::size_t iIn = 0, iOut = iIn; iIn < verticesSize; ++iIn, ++first)
     {
         typename PosToIndex::const_iterator it;
@@ -319,17 +316,9 @@ DuplicatesInfo FindDuplicates(
 }
 
 template <typename TVertex, typename TAllocator>
-void RemoveDuplicates(
-    std::vector<TVertex, TAllocator>& vertices,
-    const std::vector<std::size_t>& duplicates)
+inline void RemoveDuplicates(std::vector<TVertex, TAllocator>& vertices, const std::vector<std::size_t>& duplicates)
 {
-    vertices.erase(
-        remove_at(
-            vertices.begin(),
-            vertices.end(),
-            duplicates.begin(),
-            duplicates.end()),
-        vertices.end());
+    vertices.erase(remove_at(vertices.begin(), vertices.end(), duplicates.begin(), duplicates.end()), vertices.end());
 }
 
 template <
@@ -337,19 +326,11 @@ template <
     typename TGetEdgeVertexStart,
     typename TGetEdgeVertexEnd,
     typename TMakeEdgeFromStartAndEnd>
-void RemapEdges(
-    TEdgeIter first,
-    const TEdgeIter last,
-    const std::vector<std::size_t>& mapping,
-    TGetEdgeVertexStart getStart,
-    TGetEdgeVertexEnd getEnd,
-    TMakeEdgeFromStartAndEnd makeEdge)
+void inline RemapEdges(TEdgeIter first, const TEdgeIter last, const std::vector<std::size_t>& mapping, TGetEdgeVertexStart getStart, TGetEdgeVertexEnd getEnd, TMakeEdgeFromStartAndEnd makeEdge)
 {
     for(; first != last; ++first)
     {
-        *first = makeEdge(
-            static_cast<VertInd>(mapping[getStart(*first)]),
-            static_cast<VertInd>(mapping[getEnd(*first)]));
+        *first = makeEdge(static_cast<VertInd>(mapping[getStart(*first)]), static_cast<VertInd>(mapping[getEnd(*first)]));
     }
 }
 
@@ -373,40 +354,38 @@ DuplicatesInfo RemoveDuplicatesAndRemapEdges(
     TGetEdgeVertexEnd getEnd,
     TMakeEdgeFromStartAndEnd makeEdge)
 {
-    const DuplicatesInfo di =
-        FindDuplicates<T>(vertices.begin(), vertices.end(), getX, getY);
+    const DuplicatesInfo di = FindDuplicates<T>(vertices.begin(), vertices.end(), getX, getY);
     RemoveDuplicates(vertices, di.duplicates);
     RemapEdges(edgesFirst, edgesLast, di.mapping, getStart, getEnd, makeEdge);
     return di;
 }
 
 template <typename T>
-unordered_map<Edge, std::vector<VertInd> > EdgeToSplitVertices(
-    const unordered_map<Edge, EdgeVec>& edgeToPieces,
-    const std::vector<V2d<T> >& vertices)
+emhash7::HashMap<Edge, std::vector<VertInd>, ankerl::unordered_dense::hash<Edge>> EdgeToSplitVertices(const emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>& edgeToPieces, const std::vector<V2d<T> >& vertices)
 {
     typedef std::pair<VertInd, T> VertCoordPair;
     struct ComparePred
     {
-        bool operator()(const VertCoordPair& a, const VertCoordPair& b) const
+        inline bool operator()(const VertCoordPair& a, const VertCoordPair& b) const
         {
             return a.second < b.second;
         }
     } comparePred;
 
-    unordered_map<Edge, std::vector<VertInd> > edgeToSplitVerts;
-    typedef unordered_map<Edge, EdgeVec>::const_iterator It;
+    emhash7::HashMap<Edge, std::vector<VertInd>, ankerl::unordered_dense::hash<Edge>> edgeToSplitVerts;
+    typedef emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>::const_iterator It;
     for(It e2pIt = edgeToPieces.begin(); e2pIt != edgeToPieces.end(); ++e2pIt)
     {
         const Edge& e = e2pIt->first;
-        const T dX = vertices[e.v2()].x - vertices[e.v1()].x;
-        const T dY = vertices[e.v2()].y - vertices[e.v1()].y;
+        const V2d<T>& v1 = vertices[e.v1()];
+        const V2d<T>& v2 = vertices[e.v2()];
+        const T dX = v2.x - v1.x;
+        const T dY = v2.y - v1.y;
         const bool isX = std::abs(dX) >= std::abs(dY); // X-coord longer
-        const bool isAscending =
-            isX ? dX >= 0 : dY >= 0; // Longer coordinate ascends
+        const bool isAscending = isX ? dX >= 0 : dY >= 0; // Longer coordinate ascends
         const EdgeVec& pieces = e2pIt->second;
         std::vector<VertCoordPair> splitVerts;
-        // size is:  2[ends] + (pieces - 1)[split vertices] = pieces + 1
+        // size is: 2[ends] + (pieces - 1)[split vertices] = pieces + 1
         splitVerts.reserve(pieces.size() + 1);
         typedef EdgeVec::const_iterator EIt;
         for(EIt pieceIt = pieces.begin(); pieceIt != pieces.end(); ++pieceIt)
@@ -415,19 +394,17 @@ unordered_map<Edge, std::vector<VertInd> > EdgeToSplitVertices(
             typedef array<VertInd, 2>::const_iterator VIt;
             for(VIt v = vv.begin(); v != vv.end(); ++v)
             {
-                const T c = isX ? vertices[*v].x : vertices[*v].y;
+                const V2d<T>& u = vertices[*v];
+                const T c = isX ? u.x : u.y;
                 splitVerts.push_back(std::make_pair(*v, isAscending ? c : -c));
             }
         }
         // sort by longest coordinate
-        std::sort(splitVerts.begin(), splitVerts.end(), comparePred);
+        pdqsort_branchless(splitVerts.begin(), splitVerts.end(), comparePred);
         // remove duplicates
-        splitVerts.erase(
-            std::unique(splitVerts.begin(), splitVerts.end()),
-            splitVerts.end());
+        splitVerts.erase(std::unique(splitVerts.begin(), splitVerts.end()), splitVerts.end());
         assert(splitVerts.size() > 2); // 2 end points with split vertices
-        std::pair<Edge, std::vector<VertInd> > val =
-            std::make_pair(e, std::vector<VertInd>());
+        std::pair<Edge, std::vector<VertInd> > val = std::make_pair(e, std::vector<VertInd>());
         val.second.reserve(splitVerts.size());
         typedef typename std::vector<VertCoordPair>::const_iterator SEIt;
         for(SEIt it = splitVerts.begin() + 1; it != splitVerts.end() - 1; ++it)

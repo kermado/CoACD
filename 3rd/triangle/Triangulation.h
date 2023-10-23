@@ -144,14 +144,14 @@ public:
      * @note needed for handling depth calculations and hole-removel in case of
      * overlapping boundaries
      */
-    unordered_map<Edge, BoundaryOverlapCount> overlapCount;
+    emhash7::HashMap<Edge, BoundaryOverlapCount, ankerl::unordered_dense::hash<Edge>> overlapCount;
 
     /** Stores list of original edges represented by a given fixed edge
      * @note map only has entries for edges where multiple original fixed edges
      * overlap or where a fixed edge is a part of original edge created by
      * conforming Delaunay triangulation vertex insertion
      */
-    unordered_map<Edge, EdgeVec> pieceToOriginals;
+    emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>> pieceToOriginals;
 
     /*____ API _____*/
     /// Default constructor
@@ -596,10 +596,7 @@ private:
      * @return triangles of the deeper layers that are adjacent to the peeled
      * layer. To be used as seeds when peeling deeper layers.
      */
-    unordered_map<TriInd, LayerDepth> peelLayer(
-        stack<TriInd> seeds,
-        LayerDepth layerDepth,
-        std::vector<LayerDepth>& triDepths) const;
+    emhash7::HashMap<TriInd, LayerDepth, ankerl::unordered_dense::hash<TriInd>> peelLayer(stack<TriInd> seeds, LayerDepth layerDepth, std::vector<LayerDepth>& triDepths) const;
 
     void insertVertices_AsProvided(VertInd superGeomVertCount);
     void insertVertices_Randomized(VertInd superGeomVertCount);

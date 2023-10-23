@@ -22,7 +22,7 @@ namespace threeyd
     {
         namespace detail
         {
-            static constexpr float MATH_PI = 3.f;
+            static constexpr float MATH_PI = 3.14159265358979F;
 
             template <typename...>
             using void_t = void;

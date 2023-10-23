@@ -56,8 +56,10 @@ typedef char couldnt_parse_cxx_standard[-1]; ///< Error: couldn't parse standard
 #include <array>
 #include <functional>
 #include <tuple>
-#include <unordered_map>
-#include <unordered_set>
+#include "../src/hash/HashMap.h"
+#include "../src/hash/HashSet.h"
+#include "../src/hash/unordered_dense.h"
+
 namespace CDT
 {
 using std::array;
@@ -65,16 +67,12 @@ using std::get;
 using std::make_tuple;
 using std::tie;
 using std::tuple;
-using std::unordered_map;
-using std::unordered_set;
 } // namespace CDT
 
 #else
 #include <boost/array.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
 namespace CDT
 {
 using boost::array;
@@ -82,8 +80,6 @@ using boost::get;
 using boost::make_tuple;
 using boost::tie;
 using boost::tuple;
-using boost::unordered_map;
-using boost::unordered_set;
 } // namespace CDT
 #endif
 
@@ -103,21 +99,21 @@ struct CDT_EXPORT V2d
 
 /// X- coordinate getter for V2d
 template <typename T>
-const T& getX_V2d(const V2d<T>& v)
+inline const T& getX_V2d(const V2d<T>& v)
 {
     return v.x;
 }
 
 /// Y-coordinate getter for V2d
 template <typename T>
-const T& getY_V2d(const V2d<T>& v)
+inline const T& getY_V2d(const V2d<T>& v)
 {
     return v.y;
 }
 
 /// If two 2D vectors are exactly equal
 template <typename T>
-bool operator==(const CDT::V2d<T>& lhs, const CDT::V2d<T>& rhs)
+inline bool operator==(const CDT::V2d<T>& lhs, const CDT::V2d<T>& rhs)
 {
     return lhs.x == rhs.x && lhs.y == rhs.y;
 }
@@ -145,8 +141,7 @@ typedef IndexSizeType TriInd;
 #endif
 
 /// Constant representing no valid value for index
-const static IndexSizeType
-    invalidIndex(std::numeric_limits<IndexSizeType>::max());
+const static IndexSizeType invalidIndex(std::numeric_limits<IndexSizeType>::max());
 /// Constant representing no valid neighbor for a triangle
 const static TriInd noNeighbor(invalidIndex);
 /// Constant representing no valid vertex for a triangle
@@ -164,12 +159,12 @@ struct CDT_EXPORT Box2d
     V2d<T> max; ///< max box corner
 
     /// Envelop box around a point
-    void envelopPoint(const V2d<T>& p)
+    inline void envelopPoint(const V2d<T>& p)
     {
         envelopPoint(p.x, p.y);
     }
     /// Envelop box around a point with given coordinates
-    void envelopPoint(const T x, const T y)
+    inline void envelopPoint(const T x, const T y)
     {
         min.x = std::min(x, min.x);
         max.x = std::max(x, max.x);
@@ -242,10 +237,10 @@ inline Edge edge_make(VertInd iV1, VertInd iV2)
     return Edge(iV1, iV2);
 }
 
-typedef std::vector<Edge> EdgeVec;                ///< Vector of edges
-typedef unordered_set<Edge> EdgeUSet;             ///< Hash table of edges
-typedef unordered_set<TriInd> TriIndUSet;         ///< Hash table of triangles
-typedef unordered_map<TriInd, TriInd> TriIndUMap; ///< Triangle hash map
+typedef std::vector<Edge> EdgeVec; ///< Vector of edges
+typedef emhash8::HashSet<Edge, ankerl::unordered_dense::hash<Edge>> EdgeUSet; ///< Hash table of edges
+typedef emhash8::HashSet<TriInd, ankerl::unordered_dense::hash<TriInd>> TriIndUSet; ///< Hash table of triangles
+typedef emhash7::HashMap<TriInd, TriInd, ankerl::unordered_dense::hash<TriInd>> TriIndUMap; ///< Triangle hash map
 
 /// Triangulation triangle (counter-clockwise winding)
 /*
@@ -274,30 +269,36 @@ struct CDT_EXPORT Triangle
     /// @returns pair of next triangle and the other vertex of a common edge
     std::pair<TriInd, VertInd> next(const VertInd i) const
     {
-        assert(vertices[0] == i || vertices[1] == i || vertices[2] == i);
-        if(vertices[0] == i)
+        const VertInd v0 = vertices[0];
+        const VertInd v1 = vertices[1];
+        const VertInd v2 = vertices[2];
+        assert(v0 == i || v1 == i || v2 == i);
+        if(v0 == i)
         {
-            return std::make_pair(neighbors[0], vertices[1]);
+            return std::make_pair(neighbors[0], v1);
         }
-        if(vertices[1] == i)
+        if(v1 == i)
         {
-            return std::make_pair(neighbors[1], vertices[2]);
+            return std::make_pair(neighbors[1], v2);
         }
-        return std::make_pair(neighbors[2], vertices[0]);
+        return std::make_pair(neighbors[2], v0);
     }
     /// Previous triangle adjacent to a vertex (counter-clockwise)
     /// @returns pair of previous triangle and the other vertex of a common edge
     std::pair<TriInd, VertInd> prev(const VertInd i) const
     {
-        assert(vertices[0] == i || vertices[1] == i || vertices[2] == i);
-        if(vertices[0] == i)
-            return std::make_pair(neighbors[2], vertices[2]);
-        if(vertices[1] == i)
-            return std::make_pair(neighbors[0], vertices[0]);
-        return std::make_pair(neighbors[1], vertices[1]);
+        const VertInd v0 = vertices[0];
+        const VertInd v1 = vertices[1];
+        const VertInd v2 = vertices[2];
+        assert(v0 == i || v1 == i || v2 == i);
+        if(v0 == i)
+            return std::make_pair(neighbors[2], v2);
+        if(v1 == i)
+            return std::make_pair(neighbors[0], v0);
+        return std::make_pair(neighbors[1], v1);
     }
 
-    bool containsVertex(const VertInd i) const
+    inline bool containsVertex(const VertInd i) const
     {
         return std::find(vertices.begin(), vertices.end(), i) != vertices.end();
     }
@@ -473,7 +474,7 @@ template <>
 struct hash<CDT::Edge>
 {
     /// Hash operator
-    std::size_t operator()(const CDT::Edge& e) const
+    inline std::size_t operator()(const CDT::Edge& e) const
     {
         return hashEdge(e);
     }

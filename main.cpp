@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     logger::warn("Threshold t exceeds the lower bound and is automatically set as 0.01!");
   else if (params.threshold > 1)
     logger::warn("Threshold t exceeds the higher bound and is automatically set as 1!");
-  params.threshold = min(max(params.threshold, 0.01), 1.0);
+  //params.threshold = min(max(params.threshold, 0.01), 1.0);
 
   Model m;
   array<array<double, 3>, 3> rot;

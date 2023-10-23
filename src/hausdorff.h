@@ -120,7 +120,7 @@ namespace coacd
 
     double face_hausdorff_distance(const Model &meshA, const vector<vec3d> &XA, const vector<int> &idA, const Model &meshB, const vector<vec3d> &XB, const vector<int> &idB, bool flag = false)
     {
-        constexpr int n = 7;
+        constexpr int n = 10;
 
         const int nA = XA.size();
         const int nB = XB.size();

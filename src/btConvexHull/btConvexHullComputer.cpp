@@ -1759,7 +1759,7 @@ void btConvexHullInternal::merge(IntermediateHull& h0, IntermediateHull& h1)
     }
 }
 
-static bool pointCmp(const btConvexHullInternal::Point32& p, const btConvexHullInternal::Point32& q)
+static inline bool pointCmp(const btConvexHullInternal::Point32& p, const btConvexHullInternal::Point32& q)
 {
     return (p.y < q.y) || ((p.y == q.y) && ((p.x < q.x) || ((p.x == q.x) && (p.z < q.z))));
 }

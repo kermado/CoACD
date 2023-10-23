@@ -17,9 +17,7 @@
 namespace CDT
 {
 
-CDT_INLINE_IF_HEADER_ONLY VerticesTriangles calculateTrianglesByVertex(
-    const TriangleVec& triangles,
-    const VertInd verticesSize)
+CDT_INLINE_IF_HEADER_ONLY VerticesTriangles calculateTrianglesByVertex(const TriangleVec& triangles, const VertInd verticesSize)
 {
     VerticesTriangles vertTris(verticesSize);
     for(TriInd iT(0); iT < triangles.size(); ++iT)
@@ -34,16 +32,15 @@ CDT_INLINE_IF_HEADER_ONLY VerticesTriangles calculateTrianglesByVertex(
 }
 
 template <typename T>
-DuplicatesInfo RemoveDuplicates(std::vector<V2d<T> >& vertices)
+inline DuplicatesInfo RemoveDuplicates(std::vector<V2d<T>>& vertices)
 {
-    const DuplicatesInfo di = FindDuplicates<T>(
-        vertices.begin(), vertices.end(), getX_V2d<T>, getY_V2d<T>);
+    const DuplicatesInfo di = FindDuplicates<T>(vertices.begin(), vertices.end(), getX_V2d<T>, getY_V2d<T>);
     RemoveDuplicates(vertices, di.duplicates);
     return di;
 }
 
 CDT_INLINE_IF_HEADER_ONLY void
-RemapEdges(std::vector<Edge>& edges, const std::vector<std::size_t>& mapping)
+inline RemapEdges(std::vector<Edge>& edges, const std::vector<std::size_t>& mapping)
 {
     RemapEdges(
         edges.begin(),
@@ -55,9 +52,7 @@ RemapEdges(std::vector<Edge>& edges, const std::vector<std::size_t>& mapping)
 }
 
 template <typename T>
-DuplicatesInfo RemoveDuplicatesAndRemapEdges(
-    std::vector<V2d<T> >& vertices,
-    std::vector<Edge>& edges)
+inline DuplicatesInfo RemoveDuplicatesAndRemapEdges(std::vector<V2d<T>>& vertices, std::vector<Edge>& edges)
 {
     return RemoveDuplicatesAndRemapEdges<T>(
         vertices,
@@ -77,26 +72,26 @@ extractEdgesFromTriangles(const TriangleVec& triangles)
     typedef TriangleVec::const_iterator CIt;
     for(CIt t = triangles.begin(); t != triangles.end(); ++t)
     {
-        edges.insert(Edge(VertInd(t->vertices[0]), VertInd(t->vertices[1])));
-        edges.insert(Edge(VertInd(t->vertices[1]), VertInd(t->vertices[2])));
-        edges.insert(Edge(VertInd(t->vertices[2]), VertInd(t->vertices[0])));
+        const VertInd v0(t->vertices[0]);
+        const VertInd v1(t->vertices[1]);
+        const VertInd v2(t->vertices[2]);
+        edges.insert(Edge(v0, v1));
+        edges.insert(Edge(v1, v2));
+        edges.insert(Edge(v2, v0));
     }
     return edges;
 }
 
-CDT_INLINE_IF_HEADER_ONLY unordered_map<Edge, EdgeVec>
-EdgeToPiecesMapping(const unordered_map<Edge, EdgeVec>& pieceToOriginals)
+CDT_INLINE_IF_HEADER_ONLY emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>
+EdgeToPiecesMapping(const emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>& pieceToOriginals)
 {
-    unordered_map<Edge, EdgeVec> originalToPieces;
-    typedef unordered_map<Edge, EdgeVec>::const_iterator Cit;
-    for(Cit ptoIt = pieceToOriginals.begin(); ptoIt != pieceToOriginals.end();
-        ++ptoIt)
+    emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>> originalToPieces;
+    typedef emhash7::HashMap<Edge, EdgeVec, ankerl::unordered_dense::hash<Edge>>::const_iterator Cit;
+    for(Cit ptoIt = pieceToOriginals.begin(); ptoIt != pieceToOriginals.end(); ++ptoIt)
     {
         const Edge piece = ptoIt->first;
         const EdgeVec& originals = ptoIt->second;
-        for(EdgeVec::const_iterator origIt = originals.begin();
-            origIt != originals.end();
-            ++origIt)
+        for(EdgeVec::const_iterator origIt = originals.begin(); origIt != originals.end(); ++origIt)
         {
             originalToPieces[*origIt].push_back(piece);
         }

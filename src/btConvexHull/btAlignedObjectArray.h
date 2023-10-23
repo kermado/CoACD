@@ -16,6 +16,9 @@ subject to the following restrictions:
 #ifndef BT_OBJECT_ARRAY__
 #define BT_OBJECT_ARRAY__
 
+#include <iterator>
+#include "../3rd/sort/pdqsort.h"
+
 #include "btAlignedAllocator.h"
 #include "btScalar.h" // has definitions like SIMD_FORCE_INLINE
 
@@ -47,6 +50,7 @@ class btAlignedObjectArray {
 
     int32_t m_size;
     int32_t m_capacity;
+public:
     T* m_data;
     //PCK: added this line
     bool m_ownsMemory;
@@ -279,9 +283,9 @@ public:
 
     class less {
     public:
-        bool operator()(const T& a, const T& b)
+        inline bool operator()(const T& a, const T& b)
         {
-            return (a < b);
+            return a < b;
         }
     };
 
@@ -317,8 +321,9 @@ public:
     void quickSort(const L& CompareFunc)
     {
         //don't sort 0 or 1 elements
-        if (size() > 1) {
-            quickSortInternal(CompareFunc, 0, size() - 1);
+        const int32_t count = size();
+        if (count > 1) {
+            pdqsort_branchless(m_data, m_data + count, CompareFunc);
         }
     }
 
