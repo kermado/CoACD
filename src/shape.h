@@ -190,9 +190,10 @@ namespace coacd
         point.pts.resize(size);
         for (size_t i = 0; i < size; i++)
         {
-            point.pts[i].x = V[i][0];
-            point.pts[i].y = V[i][1];
-            point.pts[i].z = V[i][2];
+            const vec3d& v = V[i];
+            point.pts[i].x = v[0];
+            point.pts[i].y = v[1];
+            point.pts[i].z = v[2];
         }
     }
 }
