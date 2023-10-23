@@ -868,24 +868,25 @@ namespace coacd
         return;
     }
 
-    Node *MonteCarloTreeSearch(Params &params, Node *node, vector<Plane> &best_path)
+    Node *MonteCarloTreeSearch(Params &params, Node *node, vector<Plane> &best_path, std::atomic<bool>& cancel)
     {
         int computation_budget = params.mcts_iteration;
         Model initial_mesh = node->get_state()->current_parts[0].current_mesh, initial_ch;
         initial_mesh.ComputeCH(initial_ch);
-        double cost = ComputeRv(initial_mesh, initial_ch, params.rv_k) / params.mcts_max_depth;
+        const double cost = ComputeRv(initial_mesh, initial_ch, params.rv_k) / params.mcts_max_depth;
         vector<Plane> current_path;
 
         for (int i = 0; i < computation_budget; i++)
         {
+            if (cancel) { return nullptr; }
+
             current_path.clear();
             bool flag = false;
             Node *expand_node = tree_policy(node, cost, flag);
-            double reward = default_policy(expand_node, params, current_path);
+            const double reward = default_policy(expand_node, params, current_path);
             backup(expand_node, reward, current_path, best_path);
         }
-        Node *best_next_node = best_child(node, false);
 
-        return best_next_node;
+        return best_child(node, false);
     }
 }

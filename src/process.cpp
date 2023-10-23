@@ -34,7 +34,7 @@ namespace coacd
         merge.ComputeCH(ch);
     }
 
-    double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, double epsilon, double threshold)
+    double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, std::atomic<bool>& cancel, double epsilon, double threshold)
     {
         logger::info(" - Merge Convex Hulls");
         size_t nConvexHulls = (size_t)cvxs.size();
@@ -54,6 +54,8 @@ namespace coacd
 #endif
             for (int idx = 0; idx < bound; ++idx)
             {
+                if (cancel) { return 0.0; }
+
                 p1 = (int)(sqrt(8 * idx + 1) - 1) >> 1; // compute nearest triangle number index
                 int sum = (p1 * (p1 + 1)) >> 1;         // compute nearest triangle number from index
                 p2 = idx - sum;                         // modular arithmetic from triangle number
@@ -78,6 +80,8 @@ namespace coacd
 
             while (true)
             {
+                if (cancel) { return 0.0; }
+
                 // Search for lowest cost
                 double bestCost = INF;
                 const size_t addr = FindMinimumElement(costMatrix, &bestCost, 0, (int32_t)costMatrix.size());
@@ -197,7 +201,7 @@ namespace coacd
         return h;
     }
 
-    vector<Model> Compute(Model &mesh, Params &params)
+    vector<Model> Compute(Model &mesh, Params &params, std::atomic<bool>& cancel, std::atomic<uint32_t>& progress)
     {
         random_engine.seed(params.seed);
 
@@ -226,9 +230,15 @@ namespace coacd
 #ifdef _OPENMP
 #pragma omp parallel for default(none) shared(InputParts, params, mesh, writelock, parts, pmeshs, tmp) private(cut_area)
 #endif
-            double concavity = 0.0;
+            float concavity(0);
             for (int p = 0; p < (int)InputParts.size(); p++)
             {
+                if (cancel)
+                {
+                    Cache::get().shrink();
+                    return vector<Model>();
+                }
+
                 if (p % ((int)InputParts.size() / 10 + 1) == 0)
                     logger::info("Processing [{:.1f}%]", p * 100.0 / (int)InputParts.size());
 
@@ -236,17 +246,25 @@ namespace coacd
                 Plane bestplane;
                 pmesh.ComputeVCH(pCH);
                 const double h = ComputeHCost(pmesh, pCH, params.rv_k, params.resolution, params.seed, 0.0001, false);
-                concavity = max(concavity, h);
+                concavity = max(concavity, (float)h);
 
                 if (h > params.threshold)
                 {
-                    vector<Plane> planes, best_path;
+                    vector<Plane> best_path;
 
                     // MCTS for cutting plane
                     Node *node = new Node(params);
                     State state(params, pmesh);
                     node->set_state(state);
-                    Node *best_next_node = MonteCarloTreeSearch(params, node, best_path);
+                    Node *best_next_node = MonteCarloTreeSearch(params, node, best_path, cancel);
+                    
+                    if (cancel)
+                    {
+                        free_tree(node, 0);
+                        Cache::get().shrink();
+                        return vector<Model>();
+                    }
+
                     if (best_next_node == NULL)
                     {
 #ifdef _OPENMP
@@ -266,19 +284,18 @@ namespace coacd
                         free_tree(node, 0);
 
                         Model pos, neg;
-                        bool clipf = Clip(pmesh, pos, neg, bestplane, cut_area);
+                        const bool clipf = Clip(pmesh, pos, neg, bestplane, cut_area);
                         if (!clipf)
                         {
                             logger::error("Wrong clip proposal!");
-                            exit(0);
+                            Cache::get().shrink();
+                            return vector<Model>();
                         }
 #ifdef _OPENMP
                         omp_set_lock(&writelock);
 #endif
-                        if ((int)pos.triangles.size() > 0)
-                            tmp.push_back(pos);
-                        if ((int)neg.triangles.size() > 0)
-                            tmp.push_back(neg);
+                        if ((int)pos.triangles.size() > 0) tmp.push_back(pos);
+                        if ((int)neg.triangles.size() > 0) tmp.push_back(neg);
 #ifdef _OPENMP
                         omp_unset_lock(&writelock);
 #endif
@@ -296,15 +313,26 @@ namespace coacd
 #endif
                 }
             }
-            std::cout << concavity << std::endl;
+
+            progress = *reinterpret_cast<uint32_t*>(&concavity);
+
             logger::info("Processing [100.0%]");
             InputParts.clear();
             InputParts = tmp;
             tmp.clear();
             iter++;
         }
+
         if (params.merge)
-            MergeConvexHulls(mesh, pmeshs, parts, params);
+        {
+            MergeConvexHulls(mesh, pmeshs, parts, params, cancel);
+        }
+
+        if (cancel)
+        {
+            Cache::get().shrink();
+            return vector<Model>();
+        }
 
 #ifdef _OPENMP
         end = omp_get_wtime();
@@ -315,6 +343,7 @@ namespace coacd
 #endif
         logger::info("# Convex Hulls: {}", (int)parts.size());
 
+        Cache::get().shrink();
         return parts;
     }
 }

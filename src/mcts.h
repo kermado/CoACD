@@ -116,7 +116,7 @@ namespace coacd
   Node *expand(Node *node);
   Node *best_child(Node *node, bool is_exploration, double initial_cost = 0.1);
   void backup(Node *node, double reward, vector<Plane> &current_path, vector<Plane> &best_path);
-  Node *MonteCarloTreeSearch(Params &params, Node *node, vector<Plane> &best_path);
+  Node *MonteCarloTreeSearch(Params &params, Node *node, vector<Plane> &best_path, std::atomic<bool>& cancel);
 
   bool clip_by_path(Model &m, double &final_cost, Params &params, Plane &first_plane, vector<Plane> &best_path);
   bool TernaryMCTS(Model &m, Params &params, Plane &bestplane, vector<Plane> &best_path, double best_cost, bool mode = 1, double epsilon = 0.0001);

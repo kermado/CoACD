@@ -24,8 +24,8 @@ namespace coacd
 
   void ManifoldPreprocess(Params &params, Model &m);
   void MergeCH(Model &ch1, Model &ch2, Model &ch);
-  double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, double epsilon = 0.02, double threshold = 0.01);
-  vector<Model> Compute(Model &mesh, Params &params);
+  double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, std::atomic<bool>& cancel, double epsilon = 0.02, double threshold = 0.01);
+  vector<Model> Compute(Model &mesh, Params &params, std::atomic<bool>& cancel, std::atomic<uint32_t>& progress);
 
   inline int32_t FindMinimumElement(const vector<double>& d, double *const m, const int32_t begin, const int32_t end)
   {

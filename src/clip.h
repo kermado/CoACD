@@ -1,33 +1,10 @@
 #pragma once
 
 #include "model_obj.h"
-#include "pair.h"
-#include "hash/HashSet.h"
-#include "hash/HashMap.h"
-#include "hash/unordered_dense.h"
-#include <deque>
-
-using std::endl;
-
-template <typename KeyT, typename HashT = ankerl::unordered_dense::hash<KeyT>, typename EqT = std::equal_to<KeyT>>
-using hash_set = emhash8::HashSet<KeyT, HashT, EqT>;
-
-template <typename KeyT, typename ValueT, typename HashT = ankerl::unordered_dense::hash<KeyT>, typename EqT = std::equal_to<KeyT>>
-using hash_map = emhash7::HashMap<KeyT, ValueT, HashT, EqT>;
+#include "cache.h"
 
 namespace coacd
 {
-    struct pair_hash
-    {
-        inline std::size_t operator()(const pair& p) const
-        {
-            return hasher(p.i);
-        }
-
-    private:
-        ankerl::unordered_dense::hash<uint64_t> hasher;
-    };
-
     bool Clip(const Model &mesh, Model &pos, Model &neg, Plane &plane, double &cut_area, bool foo = false);
     bool CreatePlaneRotationMatrix(const vector<vec3d>& border, vec3d& T, double R[3][3], Plane &plane);
     short Triangulation(vector<vec3d>& border, const vector<pair>& border_edges, vector<vec3i>& border_triangles, Plane& plane);

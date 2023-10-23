@@ -140,28 +140,6 @@ namespace coacd
         return true;
     }
 
-    struct TriangulateCache
-    {
-        vector<CDT::V2d<double>> points;
-
-        TriangulateCache()
-        : points()
-        {
-            // Nothing to do.
-        }
-
-        static TriangulateCache& get()
-        {
-            static TriangulateCache instance;
-            return instance;
-        }
-
-        void prepare(const int p_length)
-        {
-            points.resize(p_length);
-        }
-    };
-
     static int edge_start(const pair& p)
     {
         return p.m[0] - 1;
@@ -180,8 +158,8 @@ namespace coacd
 
         const int count = (int)border.size();
 
-        TriangulateCache& cache = TriangulateCache::get();
-        cache.prepare(count);
+        Cache& cache = Cache::get();
+        cache.triangulate_prepare(count);
         vector<CDT::V2d<double>>& points = cache.points;
 
         const double R00 = R[0][0];
@@ -246,61 +224,16 @@ namespace coacd
         return 0;
     }
 
-    struct TrianglesCache
-    {
-        std::vector<pair> BFS_edges;
-        hash_map<pair, pair, pair_hash> edge_map;
-        hash_set<pair, pair_hash> border_map;
-        hash_set<pair, pair_hash> same_edge_map;
-        hash_set<int> overlap_map;
-        std::vector<bool> add_vertex;
-        std::vector<bool> remove_map;
-
-        TrianglesCache()
-        : BFS_edges(),
-          edge_map(),
-          border_map(),
-          same_edge_map(),
-          overlap_map(),
-          add_vertex(),
-          remove_map()
-        {
-            // Nothing to do.
-        }
-
-        static TrianglesCache& get()
-        {
-            static TrianglesCache instance;
-            return instance;
-        }
-
-        void clear()
-        {
-            BFS_edges.clear();
-            edge_map.clear();
-            border_map.clear();
-            same_edge_map.clear();
-            overlap_map.clear();
-        }
-
-        void prepare(const int v_length, const int f_length)
-        {
-            clear();
-            add_vertex.resize(v_length);
-            remove_map.resize(f_length);
-        }
-    };
-
     void RemoveOutlierTriangles(const vector<vec3d>& border, const vector<vec3d>& overlap, const vector<pair>& border_edges, const vector<vec3i>& border_triangles, int oriN,
         hash_map<int, int>& vertex_map, vector<vec3d>& final_border, vector<vec3i>& final_triangles)
     {
         const int v_length = (int)border.size();
         const int f_length = (int)border_triangles.size();
-        TrianglesCache& cache = TrianglesCache::get();
-        cache.prepare(v_length, f_length);
+        Cache& cache = Cache::get();
+        cache.outliers_prepare(v_length, f_length);
         std::vector<pair>& BFS_edges = cache.BFS_edges;
-        hash_map<pair, pair, pair_hash>& edge_map = cache.edge_map;
-        hash_set<pair, pair_hash>& border_map = cache.border_map;
+        hash_map<pair, pair, pair_hash>& edge_map = cache.tri_edge_map;
+        hash_set<pair, pair_hash>& border_map = cache.tri_border_map;
         hash_set<pair, pair_hash>& same_edge_map = cache.same_edge_map;
         hash_set<int>& overlap_map = cache.overlap_map;
         std::vector<bool>& add_vertex = cache.add_vertex;
@@ -607,56 +540,12 @@ namespace coacd
         }
     }
 
-    struct Cache
-    {
-        vector<vec3d> border;
-        vector<vec3d> overlap;
-        vector<vec3i> border_triangles, final_triangles;
-        vector<pair> border_edges;
-        hash_map<int, int> border_map;
-        vector<vec3d> final_border;
-        vector<bool> pos_map;
-        vector<bool> neg_map;
-        vector<int> pos_proj;
-        vector<int> neg_proj;
-        hash_map<pair, int, pair_hash> edge_map;
-        hash_map<int, int> vertex_map;
-
-        static Cache& get()
-        {
-            static Cache instance;
-            return instance;
-        }
-
-        void clear()
-        {
-            border.clear();
-            overlap.clear();
-            border_triangles.clear();
-            final_triangles.clear();
-            border_edges.clear();
-            border_map.clear();
-            final_border.clear();
-            edge_map.clear();
-            vertex_map.clear();
-        }
-
-        void prepare(const unsigned int n)
-        {
-            clear();
-            pos_map.resize(n);
-            neg_map.resize(n);
-            pos_proj.resize(n);
-            neg_proj.resize(n);
-        }
-    };
-
     bool Clip(const Model& mesh, Model& pos, Model& neg, Plane& plane, double& cut_area, bool foo)
     {
         const int N = mesh.points.size();
 
         Cache& cache = Cache::get();
-        cache.prepare(N);
+        cache.clip_prepare(N);
         vector<vec3d>& border = cache.border;
         vector<vec3d>& overlap = cache.overlap;
         vector<vec3i>& border_triangles = cache.border_triangles;

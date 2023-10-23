@@ -12,7 +12,7 @@ void RecoverParts(vector<Model> &meshes, vector<double> bbox,
   }
 }
 
-std::vector<Mesh> CoACD(Mesh const &input, double threshold,
+std::vector<Mesh> CoACD(Mesh const &input, std::atomic<bool>& cancel, std::atomic<uint32_t>& progress, double threshold,
                         int max_convex_hull, std::string preprocess_mode,
                         int prep_resolution, int sample_resolution,
                         int mcts_nodes, int mcts_iteration, int mcts_max_depth,
@@ -66,7 +66,7 @@ std::vector<Mesh> CoACD(Mesh const &input, double threshold,
     rot = m.PCA();
   }
 
-  vector<Model> parts = Compute(m, params);
+  vector<Model> parts = Compute(m, params, cancel, progress);
   RecoverParts(parts, bbox, rot);
 
   std::vector<Mesh> result;
@@ -93,77 +93,3 @@ void set_log_level(std::string_view level) {
 }
 
 } // namespace coacd
-
-extern "C" {
-void CoACD_freeMeshArray(CoACD_MeshArray arr) {
-  for (uint64_t i = 0; i < arr.meshes_count; ++i) {
-    delete[] arr.meshes_ptr[i].vertices_ptr;
-    arr.meshes_ptr[i].vertices_ptr = nullptr;
-    arr.meshes_ptr[i].vertices_count = 0;
-    delete[] arr.meshes_ptr[i].triangles_ptr;
-    arr.meshes_ptr[i].triangles_ptr = nullptr;
-    arr.meshes_ptr[i].triangles_count = 0;
-  }
-  arr.meshes_count = 0;
-  arr.meshes_ptr = nullptr;
-  delete[] arr.meshes_ptr;
-}
-
-CoACD_MeshArray CoACD_run(CoACD_Mesh const &input, double threshold,
-                          int max_convex_hull, int preprocess_mode,
-                          int prep_resolution, int sample_resolution,
-                          int mcts_nodes, int mcts_iteration,
-                          int mcts_max_depth, bool pca, bool merge,
-                          unsigned int seed) {
-  coacd::Mesh mesh;
-  for (uint64_t i = 0; i < input.vertices_count; ++i) {
-    mesh.vertices.push_back({input.vertices_ptr[3 * i],
-                             input.vertices_ptr[3 * i + 1],
-                             input.vertices_ptr[3 * i + 2]});
-  }
-  for (uint64_t i = 0; i < input.triangles_count; ++i) {
-    mesh.indices.push_back({input.triangles_ptr[3 * i],
-                            input.triangles_ptr[3 * i + 1],
-                            input.triangles_ptr[3 * i + 2]});
-  }
-
-  std::string pm;
-  if (preprocess_mode == preprocess_on) {
-    pm = "on";
-  } else if (preprocess_mode == preprocess_off) {
-    pm = "off";
-  } else {
-    pm = "auto";
-  }
-
-  auto meshes = coacd::CoACD(mesh, threshold, max_convex_hull, pm,
-                             prep_resolution, sample_resolution, mcts_nodes,
-                             mcts_iteration, mcts_max_depth, pca, merge, seed);
-
-  CoACD_MeshArray arr;
-  arr.meshes_ptr = new CoACD_Mesh[meshes.size()];
-  arr.meshes_count = meshes.size();
-
-  for (size_t i = 0; i < meshes.size(); ++i) {
-    arr.meshes_ptr[i].vertices_ptr = new double[meshes[i].vertices.size() * 3];
-    arr.meshes_ptr[i].vertices_count = meshes[i].vertices.size();
-    for (size_t j = 0; j < meshes[i].vertices.size(); ++j) {
-      arr.meshes_ptr[i].vertices_ptr[3 * j] = meshes[i].vertices[j][0];
-      arr.meshes_ptr[i].vertices_ptr[3 * j + 1] = meshes[i].vertices[j][1];
-      arr.meshes_ptr[i].vertices_ptr[3 * j + 2] = meshes[i].vertices[j][2];
-    }
-    arr.meshes_ptr[i].triangles_ptr = new int[meshes[i].indices.size() * 3];
-    arr.meshes_ptr[i].triangles_count = meshes[i].indices.size();
-    for (size_t j = 0; j < meshes[i].indices.size(); ++j) {
-      arr.meshes_ptr[i].triangles_ptr[3 * j] = meshes[i].indices[j][0];
-      arr.meshes_ptr[i].triangles_ptr[3 * j + 1] = meshes[i].indices[j][1];
-      arr.meshes_ptr[i].triangles_ptr[3 * j + 2] = meshes[i].indices[j][2];
-    }
-  }
-  return arr;
-}
-
-void CoACD_setLogLevel(char const *level) {
-  coacd::set_log_level(std::string_view(level));
-}
-}
