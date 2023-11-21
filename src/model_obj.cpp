@@ -15,6 +15,8 @@ namespace coacd
         barycenter[0] = 0.0;
         barycenter[1] = 0.0;
         barycenter[2] = 0.0;
+
+        idx = 0;
     }
 
     bool Model::CheckThin()

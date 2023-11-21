@@ -29,9 +29,6 @@ std::vector<Mesh> CoACD(Mesh const &input, const std::atomic<bool>& cancel, std:
   logger::info("merge                   {}", merge);
   logger::info("seed                    {}", seed);
 
-  assert(threshold >= 0.01 && threshold <= 1.0);
-  assert(prep_resolution >= 5 && prep_resolution <= 1000);
-
   Params params;
   params.input_model = "";
   params.output_name = "";

@@ -3,12 +3,105 @@
 #include "config.h"
 #include "./preprocess.h"
 
+#include <emscripten/threading.h>
+
 #include <iostream>
 #include <cmath>
+#include <algorithm>
+#include <mutex>
+#include <thread>
 
 namespace coacd
 {
     thread_local std::mt19937 random_engine;
+
+    template<class item_t, class worker_t>
+    static void parallel_foreach(item_t* start, item_t* end, worker_t worker)
+    {
+        const int thread_count = emscripten_num_logical_cores() - 1;
+        const int item_count = end - start;
+        const int items_per_thread = std::ceil((double)item_count / thread_count);
+        
+        if (thread_count > 1)
+        {
+            int idx_start = 0;
+            
+            std::vector<std::thread> threads;
+            for (int t = 0; t < thread_count; ++t)
+            {
+                const int idx_end = std::min(item_count, idx_start + items_per_thread);
+                if (idx_end > idx_start)
+                {
+                    std::thread thread([&worker, start, idx_start, idx_end]()
+                    {
+                        for (int idx = idx_start; idx < idx_end; ++idx)
+                        {
+                            worker(*(start + idx), idx);
+                        }
+                    });
+
+                    threads.push_back(std::move(thread));
+                    idx_start = idx_end;
+                }
+            }
+
+            for (std::thread& thread : threads)
+            {
+                thread.join();
+            }
+        }
+        else
+        {
+            for (item_t* current = start; current != end; ++current)
+            {
+                worker(*current, current - start);
+            }
+        }
+    }
+
+    template<class worker_t>
+    static void parallel_for(int start, int end, worker_t worker)
+    {
+        const int thread_count = emscripten_num_logical_cores() - 1;
+        const int item_count = end - start;
+        const int items_per_thread = std::ceil((double)item_count / thread_count);
+
+        if (thread_count > 1)
+        {
+            int idx_start = start;
+            
+            std::vector<std::thread> threads;
+            for (int t = 0; t < thread_count; ++t)
+            {
+                const int idx_end = std::min(end, idx_start + items_per_thread);
+                if (idx_end > idx_start)
+                {
+                    std::thread thread([&worker, idx_start, idx_end]()
+                    {
+                        for (int idx = idx_start; idx < idx_end; ++idx)
+                        {
+                            worker(idx);
+                        }
+                    });
+
+                    threads.push_back(std::move(thread));
+                    idx_start = idx_end;
+                }
+            }
+
+            for (std::thread& thread : threads)
+            {
+                thread.join();
+            }
+        }
+        else
+        {
+            for (int idx = start; idx < end; ++idx)
+            {
+                worker(idx);
+            }
+        }
+    }
 
     void ManifoldPreprocess(Params &params, Model &m)
     {
@@ -17,7 +110,7 @@ namespace coacd
         m.Clear();
         SDFManifold(tmp, m, params.prep_resolution, params.dmc_thres);
 #else
-    logger::warn("Preprocessing is not available!");
+        logger::warn("Preprocessing is not available!");
 #endif
     }
 
@@ -48,19 +141,25 @@ namespace coacd
             costMatrix.resize(bound);    // only keeps the top half of the matrix
             precostMatrix.resize(bound); // only keeps the top half of the matrix
 
-            size_t p1, p2;
-#ifdef _OPENMP
-#pragma omp parallel for default(none) shared(costMatrix, precostMatrix, cvxs, params, bound, threshold, meshs) private(p1, p2)
+#ifdef PARALLEL
+            parallel_for(0, bound, [&costMatrix, &precostMatrix, &meshs, &cvxs, &params, &cancel, threshold](int idx) {
+#else
+            for (int idx = 0; idx < bound; ++idx) {
 #endif
-            for (int idx = 0; idx < bound; ++idx)
-            {
-                if (cancel) { return 0.0; }
+                if (cancel)
+                {
+#ifdef PARALLEL
+                    return;
+#else
+                    return 0.0;
+#endif
+                }
 
-                p1 = (int)(sqrt(8 * idx + 1) - 1) >> 1; // compute nearest triangle number index
-                int sum = (p1 * (p1 + 1)) >> 1;         // compute nearest triangle number from index
-                p2 = idx - sum;                         // modular arithmetic from triangle number
+                int p1 = (int)(sqrt(8 * idx + 1) - 1) >> 1; // compute nearest triangle number index
+                const int sum = (p1 * (p1 + 1)) >> 1;         // compute nearest triangle number from index
+                const int p2 = idx - sum;                         // modular arithmetic from triangle number
                 p1++;
-                double dist = MeshDist(cvxs[p1], cvxs[p2]);
+                const double dist = MeshDist(cvxs[p1], cvxs[p2]);
                 if (dist < threshold)
                 {
                     Model combinedCH;
@@ -74,7 +173,11 @@ namespace coacd
                 {
                     costMatrix[idx] = INF;
                 }
+#ifdef PARALLEL
+            });
+#else
             }
+#endif
 
             size_t costSize = (size_t)cvxs.size();
 
@@ -200,53 +303,55 @@ namespace coacd
 
         return h;
     }
-
+    
     vector<Model> Compute(Model &mesh, Params &params, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress)
     {
         random_engine.seed(params.seed);
 
-        vector<Model> InputParts = {mesh};
+        vector<Model> input_parts { mesh };
+        vector<Model> next_input_parts;
         vector<Model> parts, pmeshs;
-#ifdef _OPENMP
-        omp_lock_t writelock;
-        omp_init_lock(&writelock);
-        double start, end;
-        start = omp_get_wtime();
-#else
-        clock_t start, end;
-        start = clock();
-#endif
 
         logger::info("# Points: {}", mesh.points.size());
         logger::info("# Triangles: {}", mesh.triangles.size());
         logger::info(" - Decomposition (MCTS)");
 
-        size_t iter = 0;
-        double cut_area;
-        while ((int)InputParts.size() > 0)
-        {
-            vector<Model> tmp;
-            logger::info("iter {} ---- waiting pool: {}", iter, InputParts.size());
-#ifdef _OPENMP
-#pragma omp parallel for default(none) shared(InputParts, params, mesh, writelock, parts, pmeshs, tmp) private(cut_area)
+        clock_t start, end;
+        start = clock();
+
+#ifdef PARALLEL
+        std::mutex mutex;
 #endif
-            float concavity(0);
-            for (int p = 0; p < (int)InputParts.size(); p++)
-            {
+
+        size_t iter = 0;
+        std::atomic<float> concavity(0);
+        while ((int)input_parts.size() > 0)
+        {
+            const int start_sort_idx = (int)parts.size();
+            next_input_parts.clear();
+            logger::info("iter {} ---- waiting pool: {}", iter, input_parts.size());
+
+#ifdef PARALLEL
+            parallel_foreach(input_parts.data(), input_parts.data() + input_parts.size(), [&mutex, &cancel, &concavity, &params, &pmeshs, &parts, &next_input_parts](Model& input_part, int idx) {
+#else
+            for (int idx = 0; idx < (int)input_parts.size(); ++idx) {
+                Model& input_part = input_parts[idx];
+#endif
                 if (cancel)
                 {
+#ifdef PARALLEL
+                    return;
+#else
                     Cache::get().shrink();
                     return vector<Model>();
+#endif
                 }
 
-                if (p % ((int)InputParts.size() / 10 + 1) == 0)
-                    logger::info("Processing [{:.1f}%]", p * 100.0 / (int)InputParts.size());
-
-                Model pmesh = InputParts[p], pCH;
+                Model ch_part;
                 Plane bestplane;
-                pmesh.ComputeVCH(pCH);
-                const double h = ComputeHCost(pmesh, pCH, params.rv_k, params.resolution, params.seed, 0.0001, false);
-                concavity = max(concavity, (float)h);
+                input_part.ComputeVCH(ch_part);
+                const double h = ComputeHCost(input_part, ch_part, params.rv_k, params.resolution, params.seed, 0.0001, false);
+                concavity = std::max(concavity.load(), (float)h);
 
                 if (h > params.threshold)
                 {
@@ -254,7 +359,7 @@ namespace coacd
 
                     // MCTS for cutting plane
                     Node *node = new Node(params);
-                    State state(params, pmesh);
+                    State state(params, input_part);
                     node->set_state(state);
                     Node *best_next_node = MonteCarloTreeSearch(params, node, best_path, cancel);
                     
@@ -262,64 +367,105 @@ namespace coacd
                     {
                         free_tree(node, 0);
                         Cache::get().shrink();
+
+#ifdef PARALLEL
+                        return;
+#else
+                        Cache::get().shrink();
                         return vector<Model>();
+#endif
                     }
 
                     if (best_next_node == NULL)
                     {
-#ifdef _OPENMP
-                        omp_set_lock(&writelock);
+#ifdef PARALLEL
+                        mutex.lock();
 #endif
-                        parts.push_back(pCH);
-                        pmeshs.push_back(pmesh);
+                        parts.push_back(ch_part);
+                        pmeshs.push_back(input_part);
+                        parts[parts.size() -1].idx = idx;
+                        pmeshs[pmeshs.size() -1].idx = idx;
+#ifdef PARALLEL
+                        mutex.unlock();
+#endif
+
                         free_tree(node, 0);
-#ifdef _OPENMP
-                        omp_unset_lock(&writelock);
-#endif
                     }
                     else
                     {
                         bestplane = best_next_node->state->current_value.first;
-                        TernaryMCTS(pmesh, params, bestplane, best_path, best_next_node->quality_value); // using Rv to Ternary refine
+                        TernaryMCTS(input_part, params, bestplane, best_path, best_next_node->quality_value); // using Rv to Ternary refine
                         free_tree(node, 0);
 
                         Model pos, neg;
-                        const bool clipf = Clip(pmesh, pos, neg, bestplane, cut_area);
+                        double cut_area;
+                        const bool clipf = Clip(input_part, pos, neg, bestplane, cut_area);
+
                         if (!clipf)
                         {
                             logger::error("Wrong clip proposal!");
                             Cache::get().shrink();
+#ifdef PARALLEL
+                            return;
+#else
+                            Cache::get().shrink();
                             return vector<Model>();
-                        }
-#ifdef _OPENMP
-                        omp_set_lock(&writelock);
 #endif
-                        if ((int)pos.triangles.size() > 0) tmp.push_back(pos);
-                        if ((int)neg.triangles.size() > 0) tmp.push_back(neg);
-#ifdef _OPENMP
-                        omp_unset_lock(&writelock);
+                        }
+#ifdef PARALLEL
+                        mutex.lock();
+#endif
+                        if (pos.triangles.empty() == false)
+                        {
+                            next_input_parts.push_back(pos);
+                            next_input_parts[next_input_parts.size() - 1].idx = idx;
+                        }
+
+                        if (neg.triangles.empty() == false)
+                        {
+                            next_input_parts.push_back(neg);
+                            next_input_parts[next_input_parts.size() - 1].idx = idx;
+                        }
+#ifdef PARALLEL
+                        mutex.unlock();
 #endif
                     }
                 }
                 else
                 {
-#ifdef _OPENMP
-                    omp_set_lock(&writelock);
+#ifdef PARALLEL
+                    mutex.lock();
 #endif
-                    parts.push_back(pCH);
-                    pmeshs.push_back(pmesh);
-#ifdef _OPENMP
-                    omp_unset_lock(&writelock);
+                    parts.push_back(ch_part);
+                    pmeshs.push_back(input_part);
+                    parts[parts.size() -1].idx = idx;
+                    pmeshs[pmeshs.size() -1].idx = idx;
+#ifdef PARALLEL
+                    mutex.unlock();
 #endif
                 }
+
+#ifdef PARALLEL
+            });
+#else
+            }  
+#endif
+
+            if (cancel)
+            {
+#ifndef PARALLEL
+                Cache::get().shrink();
+#endif
+                return vector<Model>();
             }
 
             progress = *reinterpret_cast<uint32_t*>(&concavity);
 
-            logger::info("Processing [100.0%]");
-            InputParts.clear();
-            InputParts = tmp;
-            tmp.clear();
+            std::stable_sort(parts.begin() + start_sort_idx, parts.end(), [](const Model& p1, const Model& p2) { return p1.idx < p2.idx; });
+            std::stable_sort(pmeshs.begin() + start_sort_idx, pmeshs.end(), [](const Model& p1, const Model& p2) { return p1.idx < p2.idx; });
+            std::stable_sort(next_input_parts.begin(), next_input_parts.end(), [](const Model& p1, const Model& p2) { return p1.idx < p2.idx; });
+
+            std::swap(next_input_parts, input_parts);
             iter++;
         }
 
@@ -330,20 +476,20 @@ namespace coacd
 
         if (cancel)
         {
+#ifndef PARALLEL
             Cache::get().shrink();
+#endif
             return vector<Model>();
         }
 
-#ifdef _OPENMP
-        end = omp_get_wtime();
-        logger::info("Compute Time: {}s", double(end - start));
-#else
         end = clock();
         logger::info("Compute Time: {}s", double(end - start) / CLOCKS_PER_SEC);
-#endif
         logger::info("# Convex Hulls: {}", (int)parts.size());
 
-        Cache::get().shrink();
+        #ifndef PARALLEL
+            Cache::get().shrink();
+        #endif
+
         return parts;
     }
 }

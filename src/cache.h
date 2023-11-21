@@ -56,7 +56,7 @@ namespace coacd
 
         static Cache& get()
         {
-            static Cache instance;
+            static thread_local Cache instance;
             return instance;
         }
 

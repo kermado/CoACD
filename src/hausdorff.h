@@ -112,7 +112,7 @@ namespace coacd
 
     PointCloud<double>& get_cloud()
     {
-        static PointCloud<double> cloud;
+        static thread_local PointCloud<double> cloud;
         return cloud;
     }
 

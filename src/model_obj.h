@@ -67,6 +67,8 @@ namespace coacd
         vector<vec3d> points;
         vector<vec3i> triangles;
 
+        int idx;
+
         Model();
         bool CheckThin();
         bool LoadOBJ(const string &fileName);

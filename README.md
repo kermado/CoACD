@@ -22,6 +22,6 @@ Install dependencies: [emscripten](https://emscripten.org/), [MinGW 64](https://
 cd CoACD \
 && mkdir build \
 && cd build \
-&& emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DWASM=1 \
+&& emcmake cmake .. -DCMAKE_BUILD_TYPE=Release -DWASM=1 -DPARALLEL=1 \
 && make -j
 ```
