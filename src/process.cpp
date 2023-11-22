@@ -114,17 +114,61 @@ namespace coacd
 #endif
     }
 
-    void MergeCH(Model &ch1, Model &ch2, Model &ch)
+    void MergeCH(const Model &ch1, const Model &ch2, Model &ch)
     {
         Model merge;
         merge.points.insert(merge.points.end(), ch1.points.begin(), ch1.points.end());
         merge.points.insert(merge.points.end(), ch2.points.begin(), ch2.points.end());
         merge.triangles.reserve(ch1.triangles.size() + ch2.triangles.size());
         merge.triangles.insert(merge.triangles.end(), ch1.triangles.begin(), ch1.triangles.end());
-        for (int i = 0; i < (int)ch2.triangles.size(); i++)
-            merge.triangles.push_back({int(ch2.triangles[i][0] + ch1.points.size()),
-                                       int(ch2.triangles[i][1] + ch1.points.size()), int(ch2.triangles[i][2] + ch1.points.size())});
+        const int point_count = (int)ch1.points.size();
+        const int triangle_count = (int)ch2.triangles.size();
+        for (int i = 0; i < triangle_count; i++)
+        {
+            const vec3i& triangle = ch2.triangles[i];
+            merge.triangles.emplace_back(triangle[0] + point_count, triangle[1] + point_count, triangle[2] + point_count);
+        }
+
         merge.ComputeCH(ch);
+    }
+
+    static void UpdateBoundingBox(Model& m)
+    {
+        double bbox[6] { 1E12, -1E12, 1E12, -1E12, 1E12, -1E12 };
+        const vector<vec3d>& points = m.points;
+        for (int i = 0; i < points.size(); ++i)
+        {
+            const vec3d& p = points[i];
+            for (int j = 0; j < 3; ++j)
+            {
+                bbox[j * 2] = std::min(p[j], bbox[j * 2]);
+                bbox[j * 2 + 1] = std::max(p[j], bbox[j * 2 + 1]);
+            }
+        }
+
+        std::memcpy(m.bbox, bbox, sizeof(double) * 6);
+    }
+
+    static double BoundingBoxDistanceSq(Model& m1, Model& m2)
+    {
+        double intersection[6];
+        for (int i = 0; i < 3; ++i)
+        {
+            intersection[i * 2] = std::max(m1.bbox[i * 2], m2.bbox[i * 2]);
+            intersection[i * 2 + 1] = std::min(m1.bbox[i * 2 + 1], m2.bbox[i * 2 + 1]);
+        }
+
+        double distancesq = 0;
+        for (int i = 0; i < 3; ++i)
+        {
+            const double d = intersection[i * 2] - intersection[i * 2 + 1];
+            if (d > 0)
+            {
+                distancesq += d * d;
+            }
+        }
+
+        return distancesq;
     }
 
     double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, const std::atomic<bool>& cancel, double epsilon, double threshold)
@@ -135,6 +179,11 @@ namespace coacd
 
         if (nConvexHulls > 1)
         {
+            for (int i = 0; i < nConvexHulls; ++i)
+            {
+                UpdateBoundingBox(cvxs[i]);
+            }
+
             int bound = ((((nConvexHulls - 1) * nConvexHulls)) >> 1);
             // Populate the cost matrix
             vector<double> costMatrix, precostMatrix;
@@ -156,23 +205,35 @@ namespace coacd
                 }
 
                 int p1 = (int)(sqrt(8 * idx + 1) - 1) >> 1; // compute nearest triangle number index
-                const int sum = (p1 * (p1 + 1)) >> 1;         // compute nearest triangle number from index
-                const int p2 = idx - sum;                         // modular arithmetic from triangle number
+                const int sum = (p1 * (p1 + 1)) >> 1;       // compute nearest triangle number from index
+                const int p2 = idx - sum;                   // modular arithmetic from triangle number
                 p1++;
-                const double dist = MeshDist(cvxs[p1], cvxs[p2]);
-                if (dist < threshold)
-                {
-                    Model combinedCH;
-                    MergeCH(cvxs[p1], cvxs[p2], combinedCH);
 
-                    costMatrix[idx] = ComputeHCost(cvxs[p1], cvxs[p2], combinedCH, params.rv_k, params.resolution, params.seed);
-                    precostMatrix[idx] = max(ComputeHCost(meshs[p1], cvxs[p1], params.rv_k, 3000, params.seed),
-                                             ComputeHCost(meshs[p2], cvxs[p2], params.rv_k, 3000, params.seed));
+                Model& m1 = cvxs[p1];
+                Model& m2 = cvxs[p2];
+                const double bboxdistsq = BoundingBoxDistanceSq(m1, m2);
+                if (bboxdistsq < threshold * threshold)
+                {
+                    const double dist = MeshDist(m1, m2);
+                    if (dist < threshold)
+                    {
+                        Model combinedCH;
+                        MergeCH(m1, m2, combinedCH);
+
+                        costMatrix[idx] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
+                        precostMatrix[idx] = max(ComputeHCost(meshs[p1], m1, params.rv_k, 3000, params.seed),
+                                                ComputeHCost(meshs[p2], m2, params.rv_k, 3000, params.seed));
+                    }
+                    else
+                    {
+                        costMatrix[idx] = INF;
+                    }
                 }
                 else
                 {
                     costMatrix[idx] = INF;
                 }
+                
 #ifdef PARALLEL
             });
 #else
@@ -221,15 +282,12 @@ namespace coacd
                 const size_t p1 = addrI + 1;
                 const size_t p2 = addr - ((addrI * (addrI + 1)) >> 1);
                 // printf("addr %ld, addrI %ld, p1 %ld, p2 %ld\n", addr, addrI, p1, p2);
-                assert(p1 >= 0);
-                assert(p2 >= 0);
-                assert(p1 < costSize);
-                assert(p2 < costSize);
 
                 // Make the lowest cost row and column into a new hull
                 Model cch;
                 MergeCH(cvxs[p1], cvxs[p2], cch);
                 cvxs[p2] = cch;
+                UpdateBoundingBox(cch);
 
                 std::swap(cvxs[p1], cvxs[cvxs.size() - 1]);
                 cvxs.pop_back();
@@ -240,31 +298,56 @@ namespace coacd
                 size_t rowIdx = ((p2 - 1) * p2) >> 1;
                 for (size_t i = 0; (i < p2); ++i)
                 {
-                    double dist = MeshDist(cvxs[p2], cvxs[i]);
-                    if (dist < threshold)
+                    Model& m1 = cvxs[p2];
+                    Model& m2 = cvxs[i];
+                    const double bboxdistsq = BoundingBoxDistanceSq(m1, m2);
+                    if (bboxdistsq < threshold * threshold)
                     {
-                        Model combinedCH;
-                        MergeCH(cvxs[p2], cvxs[i], combinedCH);
-                        costMatrix[rowIdx] = ComputeHCost(cvxs[p2], cvxs[i], combinedCH, params.rv_k, params.resolution, params.seed);
-                        precostMatrix[rowIdx++] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
+                        double dist = MeshDist(m1, m2);
+                        if (dist < threshold)
+                        {
+                            Model combinedCH;
+                            MergeCH(m1, m2, combinedCH);
+                            costMatrix[rowIdx] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
+                            precostMatrix[rowIdx++] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
+                        }
+                        else
+                        {
+                            costMatrix[rowIdx++] = INF;
+                        }
                     }
                     else
+                    {
                         costMatrix[rowIdx++] = INF;
+                    }
                 }
 
                 rowIdx += p2;
                 for (size_t i = p2 + 1; (i < costSize); ++i)
                 {
-                    double dist = MeshDist(cvxs[p2], cvxs[i]);
-                    if (dist < threshold)
+                    Model& m1 = cvxs[p2];
+                    Model& m2 = cvxs[i];
+                    const double bboxdistsq = BoundingBoxDistanceSq(m1, m2);
+                    if (bboxdistsq < threshold * threshold)
                     {
-                        Model combinedCH;
-                        MergeCH(cvxs[p2], cvxs[i], combinedCH);
-                        costMatrix[rowIdx] = ComputeHCost(cvxs[p2], cvxs[i], combinedCH, params.rv_k, params.resolution, params.seed);
-                        precostMatrix[rowIdx] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
+                        double dist = MeshDist(cvxs[p2], cvxs[i]);
+                        if (dist < threshold)
+                        {
+                            Model combinedCH;
+                            MergeCH(cvxs[p2], cvxs[i], combinedCH);
+                            costMatrix[rowIdx] = ComputeHCost(cvxs[p2], cvxs[i], combinedCH, params.rv_k, params.resolution, params.seed);
+                            precostMatrix[rowIdx] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
+                        }
+                        else
+                        {
+                            costMatrix[rowIdx] = INF;
+                        }
                     }
                     else
+                    {
                         costMatrix[rowIdx] = INF;
+                    }
+
                     rowIdx += i;
                     assert(rowIdx >= 0);
                 }
@@ -327,12 +410,15 @@ namespace coacd
         std::atomic<float> concavity(0);
         while ((int)input_parts.size() > 0)
         {
+            concavity = 0.0F;
+
             const int start_sort_idx = (int)parts.size();
             next_input_parts.clear();
             logger::info("iter {} ---- waiting pool: {}", iter, input_parts.size());
 
 #ifdef PARALLEL
             parallel_foreach(input_parts.data(), input_parts.data() + input_parts.size(), [&mutex, &cancel, &concavity, &params, &pmeshs, &parts, &next_input_parts](Model& input_part, int idx) {
+                random_engine.seed(params.seed);
 #else
             for (int idx = 0; idx < (int)input_parts.size(); ++idx) {
                 Model& input_part = input_parts[idx];

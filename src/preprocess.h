@@ -9,9 +9,6 @@
 #include <vector>
 #include <cstdio>
 #include <string>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #include <algorithm>
 
 #include "model_obj.h"

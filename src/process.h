@@ -23,7 +23,7 @@ namespace coacd
   extern thread_local std::mt19937 random_engine;
 
   void ManifoldPreprocess(Params &params, Model &m);
-  void MergeCH(Model &ch1, Model &ch2, Model &ch);
+  void MergeCH(const Model &ch1, const Model &ch2, Model &ch);
   double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, const std::atomic<bool>& cancel, double epsilon = 0.02, double threshold = 0.01);
   vector<Model> Compute(Model &mesh, Params &params, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress);
 
