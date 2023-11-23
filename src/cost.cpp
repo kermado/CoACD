@@ -99,18 +99,18 @@ namespace coacd
     indexB.buildIndex();
 
     double minDist = INF;
+
+    constexpr size_t num_results = 1;
+    std::vector<size_t> ret_index(num_results);
+    std::vector<double> out_dist_sqr(num_results);
+
     for (int i = 0; i < nA; i++)
     {
-      size_t num_results = 1;
-      vec3d& XAi = XA[i];
+      const vec3d& XAi = XA[i];
+      const double query_pt[3] = { XAi[0], XAi[1], XAi[2] };
 
-      double query_pt[3] = {XAi[0], XAi[1], XAi[2]};
-
-      std::vector<size_t> ret_index(num_results);
-      std::vector<double> out_dist_sqr(num_results);
-
-      num_results = indexB.knnSearch(&query_pt[0], num_results, &ret_index[0], &out_dist_sqr[0]);
-      double dist = sqrt(out_dist_sqr[0]);
+      indexB.knnSearch(&query_pt[0], num_results, &ret_index[0], &out_dist_sqr[0]);
+      const double dist = sqrt(out_dist_sqr[0]);
       minDist = min(minDist, dist);
     }
 

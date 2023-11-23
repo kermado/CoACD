@@ -22,7 +22,7 @@ namespace coacd
         const int item_count = end - start;
         const int items_per_thread = std::ceil((double)item_count / thread_count);
         
-        if (thread_count > 1)
+        if (thread_count > 1 && item_count > 1)
         {
             int idx_start = 0;
             
@@ -66,7 +66,7 @@ namespace coacd
         const int item_count = end - start;
         const int items_per_thread = std::ceil((double)item_count / thread_count);
 
-        if (thread_count > 1)
+        if (thread_count > 1 && item_count > 1)
         {
             int idx_start = start;
             
@@ -130,6 +130,12 @@ namespace coacd
         }
 
         merge.ComputeCH(ch);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            ch.bbox[i * 2] = min(ch1.bbox[i * 2], ch2.bbox[i * 2]);
+            ch.bbox[i * 2 + 1] = max(ch1.bbox[i * 2 + 1], ch2.bbox[i * 2 + 1]);
+        }
     }
 
     static void UpdateBoundingBox(Model& m)
@@ -174,7 +180,7 @@ namespace coacd
     double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, const std::atomic<bool>& cancel, double epsilon, double threshold)
     {
         logger::info(" - Merge Convex Hulls");
-        size_t nConvexHulls = (size_t)cvxs.size();
+        const int nConvexHulls = (int)cvxs.size();
         double h = 0;
 
         if (nConvexHulls > 1)
@@ -184,7 +190,7 @@ namespace coacd
                 UpdateBoundingBox(cvxs[i]);
             }
 
-            int bound = ((((nConvexHulls - 1) * nConvexHulls)) >> 1);
+            const int bound = ((((nConvexHulls - 1) * nConvexHulls)) >> 1);
             // Populate the cost matrix
             vector<double> costMatrix, precostMatrix;
             costMatrix.resize(bound);    // only keeps the top half of the matrix
@@ -222,7 +228,7 @@ namespace coacd
 
                         costMatrix[idx] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
                         precostMatrix[idx] = max(ComputeHCost(meshs[p1], m1, params.rv_k, 3000, params.seed),
-                                                ComputeHCost(meshs[p2], m2, params.rv_k, 3000, params.seed));
+                                                 ComputeHCost(meshs[p2], m2, params.rv_k, 3000, params.seed));
                     }
                     else
                     {
@@ -240,7 +246,7 @@ namespace coacd
             }
 #endif
 
-            size_t costSize = (size_t)cvxs.size();
+            int costSize = (int)cvxs.size();
 
             while (true)
             {
@@ -248,7 +254,7 @@ namespace coacd
 
                 // Search for lowest cost
                 double bestCost = INF;
-                const size_t addr = FindMinimumElement(costMatrix, &bestCost, 0, (int32_t)costMatrix.size());
+                const int addr = FindMinimumElement(costMatrix, &bestCost, 0, (int32_t)costMatrix.size());
 
                 if (params.max_convex_hull <= 0)
                 {
@@ -278,79 +284,93 @@ namespace coacd
                 }
 
                 h = max(h, bestCost);
-                const size_t addrI = (static_cast<int32_t>(sqrt(1 + (8 * addr))) - 1) >> 1;
-                const size_t p1 = addrI + 1;
-                const size_t p2 = addr - ((addrI * (addrI + 1)) >> 1);
+                const int addrI = (static_cast<int32_t>(sqrt(1 + (8 * addr))) - 1) >> 1;
+                const int p1 = addrI + 1;
+                const int p2 = addr - ((addrI * (addrI + 1)) >> 1);
                 // printf("addr %ld, addrI %ld, p1 %ld, p2 %ld\n", addr, addrI, p1, p2);
 
                 // Make the lowest cost row and column into a new hull
                 Model cch;
                 MergeCH(cvxs[p1], cvxs[p2], cch);
                 cvxs[p2] = cch;
-                UpdateBoundingBox(cch);
 
                 std::swap(cvxs[p1], cvxs[cvxs.size() - 1]);
                 cvxs.pop_back();
-
-                costSize = costSize - 1;
+                costSize--;
 
                 // Calculate costs versus the new hull
-                size_t rowIdx = ((p2 - 1) * p2) >> 1;
-                for (size_t i = 0; (i < p2); ++i)
-                {
+                int rowIdx = ((p2 - 1) * p2) >> 1;
+
+#ifdef PARALLEL
+                parallel_for(0, p2, [&cvxs, &costMatrix, &precostMatrix, &params, rowIdx, p2, threshold, bestCost](int i) {
+#else
+                for (int i = 0; i < p2; ++i) {
+#endif
                     Model& m1 = cvxs[p2];
                     Model& m2 = cvxs[i];
                     const double bboxdistsq = BoundingBoxDistanceSq(m1, m2);
                     if (bboxdistsq < threshold * threshold)
                     {
-                        double dist = MeshDist(m1, m2);
+                        const double dist = MeshDist(m1, m2);
                         if (dist < threshold)
                         {
                             Model combinedCH;
                             MergeCH(m1, m2, combinedCH);
-                            costMatrix[rowIdx] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
-                            precostMatrix[rowIdx++] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
+                            costMatrix[rowIdx + i] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
+                            precostMatrix[rowIdx + i] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
                         }
                         else
                         {
-                            costMatrix[rowIdx++] = INF;
+                            costMatrix[rowIdx + i] = INF;
                         }
                     }
                     else
                     {
-                        costMatrix[rowIdx++] = INF;
+                        costMatrix[rowIdx + i] = INF;
                     }
+#ifdef PARALLEL
+                });
+#else
                 }
+#endif
 
-                rowIdx += p2;
-                for (size_t i = p2 + 1; (i < costSize); ++i)
-                {
+                rowIdx += p2 * 2;
+
+#ifdef PARALLEL
+                parallel_for(p2 + 1, costSize, [&cvxs, &costMatrix, &precostMatrix, &params, rowIdx, p2, threshold, bestCost](int i) {
+#else
+                for (int i = p2 + 1; i < costSize; ++i) {
+#endif
+                    const int j = i - p2 - 1;
+                    const int r = rowIdx + ((p2 + 1) * j) + ((j - 1) * j / 2);
+
                     Model& m1 = cvxs[p2];
                     Model& m2 = cvxs[i];
                     const double bboxdistsq = BoundingBoxDistanceSq(m1, m2);
                     if (bboxdistsq < threshold * threshold)
                     {
-                        double dist = MeshDist(cvxs[p2], cvxs[i]);
+                        const double dist = MeshDist(m1, m2);
                         if (dist < threshold)
                         {
                             Model combinedCH;
-                            MergeCH(cvxs[p2], cvxs[i], combinedCH);
-                            costMatrix[rowIdx] = ComputeHCost(cvxs[p2], cvxs[i], combinedCH, params.rv_k, params.resolution, params.seed);
-                            precostMatrix[rowIdx] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
+                            MergeCH(m1, m2, combinedCH);
+                            costMatrix[r] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
+                            precostMatrix[r] = max(precostMatrix[p2] + bestCost, precostMatrix[i]);
                         }
                         else
                         {
-                            costMatrix[rowIdx] = INF;
+                            costMatrix[r] = INF;
                         }
                     }
                     else
                     {
-                        costMatrix[rowIdx] = INF;
+                        costMatrix[r] = INF;
                     }
-
-                    rowIdx += i;
-                    assert(rowIdx >= 0);
+#ifdef PARALLEL
+                });
+#else
                 }
+#endif
 
                 // Move the top column in to replace its space
                 const size_t erase_idx = ((costSize - 1) * costSize) >> 1;
