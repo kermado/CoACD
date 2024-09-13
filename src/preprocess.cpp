@@ -2,6 +2,7 @@
 #include "logger.h"
 #include "shape.h"
 #include "clip.h"
+#include "bvh.h"
 
 namespace coacd
 {
@@ -58,7 +59,7 @@ namespace coacd
     }
 #endif
 
-    bool IsManifold(Model &input)
+    bool IsManifold(Params &params, Model &input)
     {
         logger::info(" - Manifold Check");
         clock_t start, end;
@@ -146,6 +147,11 @@ namespace coacd
         logger::info("Manifold Check Time: {}s", double(end - start) / CLOCKS_PER_SEC);
 
         return true;
+    }
+
+    void ManifoldPreprocess(Params &params, Model &m)
+    {
+        // Disabled
     }
 
 }

@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <assert.h>
 #include <regex>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include "./io.h"
 #include "clip.h"
@@ -22,10 +25,14 @@ namespace coacd
 {
   extern thread_local std::mt19937 random_engine;
 
-  void ManifoldPreprocess(Params &params, Model &m);
+  void DecimateCH(Model &ch, int tgt_pts, string apx_mode);
+  void DecimateConvexHulls(vector<Model> &cvxs, Params &params);
   void MergeCH(const Model &ch1, const Model &ch2, Model &ch);
   double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, const std::atomic<bool>& cancel, double epsilon = 0.02, double threshold = 0.001);
+  void ExtrudeCH(Model &ch, Plane overlap_plane, Params &params, double margin = 0.01);
+  void ExtrudeConvexHulls(vector<Model> &cvxs, Params &params, double eps = 1e-4);
   vector<Model> Compute(Model &mesh, Params &params, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress);
+  bool IsManifold(Model &input);
 
   inline int32_t FindMinimumElement(const vector<double>& d, double *const m, const int32_t begin, const int32_t end)
   {

@@ -129,6 +129,11 @@ namespace coacd
 
     void Diagonalize(const array<array<double, 3>, 3>& A, array<array<double, 3>, 3>& Q, array<array<double, 3>, 3>& D);
 
+    inline double pt_norm(const vec3d& p)
+    {
+        return sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+    }
+
     inline short Plane::CutSide(vec3d p0, vec3d p1, vec3d p2, Plane plane)
     {
         vec3d normal = CalFaceNormal(p0, p1, p2);

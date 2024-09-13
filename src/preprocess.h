@@ -13,7 +13,6 @@
 
 #include "model_obj.h"
 #include "logger.h"
-#include "bvh.h"
 
 #if PREPROCESS
 using namespace openvdb;
@@ -26,4 +25,5 @@ namespace coacd
 #endif
 
     bool IsManifold(Model &input);
+    void ManifoldPreprocess(Params &params, Model &m);
 }

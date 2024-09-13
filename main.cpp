@@ -4,7 +4,9 @@
 #include <string>
 #include <time.h>
 
-#include "src/preprocess.h"
+#if WITH_3RD_PARTY_LIBS
+  #include "src/preprocess.h"
+#endif
 #include "src/process.h"
 #include "src/logger.h"
 
@@ -56,6 +58,22 @@ int main(int argc, char *argv[])
       {
         params.merge = false;
       }
+      if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--decimate") == 0)
+      {
+        params.decimate = true;
+      }
+      if (strcmp(argv[i], "-dt") == 0 || strcmp(argv[i], "--max-ch-vertex") == 0)
+      {
+        sscanf(argv[i + 1], "%d", &params.max_ch_vertex);
+      }
+      if (strcmp(argv[i], "-ex") == 0 || strcmp(argv[i], "--extrude") == 0)
+      {
+        params.extrude = true;
+      }
+      if (strcmp(argv[i], "-em") == 0 || strcmp(argv[i], "--extrude-margin") == 0)
+      {
+        sscanf(argv[i + 1], "%le", &params.extrude_margin);
+      }
       if (strcmp(argv[i], "--pca") == 0)
       {
         params.pca = true;
@@ -63,6 +81,10 @@ int main(int argc, char *argv[])
       if (strcmp(argv[i], "-pm") == 0 || strcmp(argv[i], "--preprocess-mode") == 0)
       {
         params.preprocess_mode = argv[i + 1];
+      }
+      if (strcmp(argv[i], "-am") == 0 || strcmp(argv[i], "--approximate-mode") == 0)
+      {
+        params.apx_mode = argv[i + 1];
       }
       if (strcmp(argv[i], "-pr") == 0 || strcmp(argv[i], "--prep-resolution") == 0)
       {
@@ -135,15 +157,26 @@ int main(int argc, char *argv[])
   vector<double> bbox = m.Normalize();
   // m.SaveOBJ("normalized.obj");
 
-  if (params.preprocess_mode == "auto")
-  {
+  #if WITH_3RD_PARTY_LIBS
+    if (params.preprocess_mode == "auto")
+    {
+      bool is_manifold = IsManifold(m);
+      logger::info("Mesh Manifoldness: {}", is_manifold);
+      if (!is_manifold)
+        ManifoldPreprocess(params, m);
+    }
+    else if (params.preprocess_mode == "on")
+      ManifoldPreprocess(params, m);
+  #else
     bool is_manifold = IsManifold(m);
     logger::info("Mesh Manifoldness: {}", is_manifold);
     if (!is_manifold)
-      ManifoldPreprocess(params, m);
-  }
-  else if (params.preprocess_mode == "on")
-    ManifoldPreprocess(params, m);
+    {
+      logger::critical("The mesh is not a 2-manifold! Please enable WITH_3RD_PARTY_LIBS during compilation, or use third-party libraries to preprocess the mesh.");
+      exit(0);
+    }
+
+  #endif
 
   m.SaveOBJ(params.remesh_output_name);
 

@@ -55,7 +55,7 @@ namespace coacd
         ori_mesh_area = MeshArea(initial_part);
         ori_mesh_volume = MeshVolume(initial_part);
         Model ch;
-        initial_part.ComputeCH(ch);
+        initial_part.ComputeAPX(ch);
         ori_meshCH_volume = MeshVolume(ch);
         current_cost = 0; // accumulated score
     }
@@ -72,7 +72,7 @@ namespace coacd
         ori_mesh_area = MeshArea(initial_part);
         ori_mesh_volume = MeshVolume(initial_part);
         Model ch;
-        initial_part.ComputeCH(ch);
+        initial_part.ComputeAPX(ch);
         ori_meshCH_volume = MeshVolume(ch);
         current_cost = 0;
     }
@@ -156,8 +156,8 @@ namespace coacd
                     _current_parts.push_back(current_parts[i]);
                 }
             }
-            pos.ComputeCH(posCH);
-            neg.ComputeCH(negCH);
+            pos.ComputeAPX(posCH);
+            neg.ComputeAPX(negCH);
             double cost_pos = ComputeRv(pos, posCH, params.rv_k);
             double cost_neg = ComputeRv(neg, negCH, params.rv_k);
             Part part_pos(params, pos);
@@ -272,7 +272,7 @@ namespace coacd
         double max_cost;
 
         Model ch;
-        m.ComputeCH(ch);
+        m.ComputeAPX(ch);
 
         Model pos, neg, posCH, negCH;
         flag = Clip(m, pos, neg, first_plane, tmp);
@@ -281,8 +281,8 @@ namespace coacd
             final_cost = INF;
             return false;
         }
-        pos.ComputeCH(posCH);
-        neg.ComputeCH(negCH);
+        pos.ComputeAPX(posCH);
+        neg.ComputeAPX(negCH);
         double pos_cost = ComputeRv(pos, posCH, params.rv_k);
         double neg_cost = ComputeRv(neg, negCH, params.rv_k);
         scores.push_back(pos_cost);
@@ -306,8 +306,8 @@ namespace coacd
                 final_cost = INF;
                 return false;
             }
-            _pos.ComputeCH(_posCH);
-            _neg.ComputeCH(_negCH);
+            _pos.ComputeAPX(_posCH);
+            _neg.ComputeAPX(_negCH);
             double _pos_cost = ComputeRv(_pos, _posCH, params.rv_k);
             double _neg_cost = ComputeRv(_neg, _negCH, params.rv_k);
 
@@ -673,8 +673,10 @@ namespace coacd
             else
             {
                 if (pos.points.size() <= 0 || neg.points.size() <= 0) { continue; }
-                pos.ComputeCH(posCH);
-                neg.ComputeCH(negCH);
+
+                pos.ComputeAPX(posCH);
+                neg.ComputeAPX(negCH);
+
                 H = ComputeTotalRv(m, pos, posCH, neg, negCH, params.rv_k, planes[i]);
             }
 
@@ -762,9 +764,9 @@ namespace coacd
                     _current_parts.push_back(current_state.current_parts[i]);
                 }
             }
-
-            pos.ComputeCH(posCH);
-            neg.ComputeCH(negCH);
+            
+            pos.ComputeAPX(posCH);
+            neg.ComputeAPX(negCH);
             double cost_pos = ComputeRv(pos, posCH, params.rv_k);
             double cost_neg = ComputeRv(neg, negCH, params.rv_k);
 
@@ -872,7 +874,7 @@ namespace coacd
     {
         int computation_budget = params.mcts_iteration;
         Model initial_mesh = node->get_state()->current_parts[0].current_mesh, initial_ch;
-        initial_mesh.ComputeCH(initial_ch);
+        initial_mesh.ComputeAPX(initial_ch);
         const double cost = ComputeRv(initial_mesh, initial_ch, params.rv_k) / params.mcts_max_depth;
         vector<Plane> current_path;
 

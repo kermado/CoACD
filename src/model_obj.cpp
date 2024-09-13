@@ -107,7 +107,57 @@ namespace coacd
         }
     }
 
-    void Model::ComputeCH(Model &convex)
+    void Model::ComputeAPX(Model &convex, const string& apx_mode, bool if_vch)
+    {
+        // clean convex points and triangles
+        convex.points.clear();
+        convex.triangles.clear();
+
+        if (apx_mode == "box")
+        {
+            ComputeBOX(convex);
+        }
+        else if (apx_mode == "ch" and !if_vch)
+        {
+            ComputeCH(convex);
+        }
+        else
+        {
+            ComputeVCH(convex);
+        }
+    }
+
+    void Model::ComputeBOX(Model &convex)
+    {
+        // compute the box mesh according to the bounding box of the points
+        std::vector<coacd::vec3d>& points = convex.points;
+        points.reserve(points.size() + 8);
+        points.emplace_back(bbox[1], bbox[2], bbox[5]);
+        points.emplace_back(bbox[1], bbox[3], bbox[5]);
+        points.emplace_back(bbox[0], bbox[3], bbox[5]);
+        points.emplace_back(bbox[0], bbox[2], bbox[5]);
+        points.emplace_back(bbox[1], bbox[2], bbox[4]);
+        points.emplace_back(bbox[1], bbox[3], bbox[4]);
+        points.emplace_back(bbox[0], bbox[3], bbox[4]);
+        points.emplace_back(bbox[0], bbox[2], bbox[4]);
+
+        std::vector<coacd::vec3i>& triangles = convex.triangles;
+        triangles.reserve(triangles.size() + 12);
+        triangles.emplace_back(0, 1, 3);
+        triangles.emplace_back(1, 2, 3);
+        triangles.emplace_back(1, 4, 5);
+        triangles.emplace_back(0, 4, 1);
+        triangles.emplace_back(6, 5, 4);
+        triangles.emplace_back(4, 7, 6);
+        triangles.emplace_back(3, 2, 6);
+        triangles.emplace_back(6, 7, 3);
+        triangles.emplace_back(1, 6, 2);
+        triangles.emplace_back(5, 6, 1);
+        triangles.emplace_back(0, 3, 4);
+        triangles.emplace_back(3, 7, 4);
+    }
+
+    void Model::ComputeCH(Model &convex, bool if_vch)
     {
         /* fast convex hull algorithm */
         bool flag = true;
@@ -116,9 +166,11 @@ namespace coacd
         pointCloud.reserve(points.size());
 
         // Add points to point cloud
-        for (int i = 0; i < (int)points.size(); i++)
+        const int point_count = (int)points.size();
+        for (int i = 0; i < point_count; i++)
         {
-            pointCloud.emplace_back((float)points[i][0], (float)points[i][1], (float)points[i][2]);
+            const coacd::vec3d& point = points[i];
+            pointCloud.emplace_back((float)point[0], (float)point[1], (float)point[2]);
         }
 
         quickhull::ConvexHull<float> hull = qh.getConvexHull(pointCloud, true, false, flag);
@@ -141,10 +193,11 @@ namespace coacd
         }
 
         const size_t ic = indexBuffer.size();
-        convex.triangles.reserve(ic / 3);
+        std::vector<coacd::vec3i>& triangles = convex.triangles;
+        triangles.reserve(ic / 3);
         for (size_t i(0); i < ic; i += 3)
         {
-            convex.triangles.emplace_back((int)indexBuffer[i + 2], (int)indexBuffer[i + 1], (int)indexBuffer[i]);
+            triangles.emplace_back((int)indexBuffer[i + 2], (int)indexBuffer[i + 1], (int)indexBuffer[i]);
         }
     }
 

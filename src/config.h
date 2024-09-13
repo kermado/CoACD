@@ -35,6 +35,11 @@ namespace coacd
     bool merge;
     int max_convex_hull;
     double dmc_thres;
+    string apx_mode;
+    bool decimate;
+    int max_ch_vertex;
+    bool extrude;
+    double extrude_margin;
 
     /////////////// MCTS Config ///////////////
     int mcts_iteration;
@@ -55,6 +60,11 @@ namespace coacd
       pca = false;
       merge = true;
       dmc_thres = 0.55;
+      apx_mode = "ch";
+      decimate = false;
+      max_ch_vertex = 256;
+      extrude = false;
+      extrude_margin = 0.01;
 
       mcts_iteration = 150;
       mcts_max_depth = 3;

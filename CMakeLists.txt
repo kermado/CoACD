@@ -7,7 +7,17 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(WITH_3RD_PARTY_LIBS "Include 3rd party libraries" ON)
+
+if(WITH_3RD_PARTY_LIBS)
+    add_compile_definitions(WITH_3RD_PARTY_LIBS=1)
+else()
+    set(DISABLE_SPDLOG ON)
+    add_compile_definitions(WITH_3RD_PARTY_LIBS=0)
+endif()
+
 if (MSVC)
+    add_compile_options("/bigobj")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W0 -fpermissive -D_USE_MATH_DEFINES")
     set(CMAKE_SHARED_LIBRARY_PREFIX "lib")
 else()
