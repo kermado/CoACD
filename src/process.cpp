@@ -307,15 +307,15 @@ namespace coacd
         }
     }
 
-    void MergeCH(Model &ch1, Model &ch2, Model &ch, Params &params)
+    void MergeCH(const Model &ch1, const Model &ch2, Model &ch, const Params &params)
     {
         Model merge;
         std::vector<coacd::vec3d>& merge_points = merge.points;
         std::vector<coacd::vec3i>& merge_triangles = merge.triangles;
-        std::vector<coacd::vec3d>& ch1_points = ch1.points;
-        std::vector<coacd::vec3d>& ch2_points = ch2.points;
-        std::vector<coacd::vec3i>& ch1_triangles = ch1.triangles;
-        std::vector<coacd::vec3i>& ch2_triangles = ch2.triangles;
+        const std::vector<coacd::vec3d>& ch1_points = ch1.points;
+        const std::vector<coacd::vec3d>& ch2_points = ch2.points;
+        const std::vector<coacd::vec3i>& ch1_triangles = ch1.triangles;
+        const std::vector<coacd::vec3i>& ch2_triangles = ch2.triangles;
 
         merge_points.insert(merge_points.end(), ch1_points.begin(), ch1_points.end());
         merge_points.insert(merge_points.end(), ch2_points.begin(), ch2_points.end());
