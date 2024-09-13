@@ -1,4 +1,4 @@
-#include "./process.h"
+#include "process.h"
 #include "mcts.h"
 #include "config.h"
 #include "bvh.h"
@@ -327,10 +327,16 @@ namespace coacd
         for (int i = 0; i < triangle_count; i++)
         {
             const vec3i& triangle = ch2_triangles[i];
-            merge.triangles.emplace_back(triangle[0] + point_count, triangle[1] + point_count, triangle[2] + point_count);
+            merge_triangles.emplace_back(triangle[0] + point_count, triangle[1] + point_count, triangle[2] + point_count);
         }
 
-        merge.ComputeAPX(ch, params.apx_mode, true);
+        merge.ComputeAPX(ch, params.apx_mode, false); // Passing true to use Bullet convex-hull generator produces worse results!
+
+        for (int i = 0; i < 3; ++i)
+        {
+            ch.bbox[i * 2] = min(ch1.bbox[i * 2], ch2.bbox[i * 2]);
+            ch.bbox[i * 2 + 1] = max(ch1.bbox[i * 2 + 1], ch2.bbox[i * 2 + 1]);
+        }
     }
 
     static void UpdateBoundingBox(Model& m)
@@ -419,7 +425,7 @@ namespace coacd
                     if (dist < threshold)
                     {
                         Model combinedCH;
-                        MergeCH(m1, m2, combinedCH);
+                        MergeCH(m1, m2, combinedCH, params);
 
                         costMatrix[idx] = ComputeHCost(m1, m2, combinedCH, params.rv_k, params.resolution, params.seed);
                         precostMatrix[idx] = max(ComputeHCost(meshs[p1], m1, params.rv_k, 3000, params.seed),

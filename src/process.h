@@ -27,9 +27,9 @@ namespace coacd
 
   void DecimateCH(Model &ch, int tgt_pts, string apx_mode);
   void DecimateConvexHulls(vector<Model> &cvxs, Params &params);
-  void MergeCH(const Model &ch1, const Model &ch2, const Model &ch);
+  void MergeCH(const Model &ch1, const Model &ch2, Model &ch, const Params &params);
   double MergeConvexHulls(Model &m, vector<Model> &meshs, vector<Model> &cvxs, Params &params, const std::atomic<bool>& cancel, double epsilon = 0.02, double threshold = 0.001);
-  void ExtrudeCH(Model &ch, const Plane& overlap_plane, Params &params, double margin = 0.01);
+  void ExtrudeCH(Model &ch, const Plane& overlap_plane, const Params &params, double margin = 0.01);
   void ExtrudeConvexHulls(vector<Model> &cvxs, Params &params, double eps = 1e-4);
   vector<Model> Compute(Model &mesh, Params &params, const std::atomic<bool>& cancel, std::atomic<uint32_t>& progress);
   bool IsManifold(Model &input);

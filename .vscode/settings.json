@@ -109,6 +109,8 @@
         "__tree": "cpp",
         "__verbose_abort": "cpp",
         "cwctype": "cpp",
-        "alignedvector3": "cpp"
+        "alignedvector3": "cpp",
+        "cfenv": "cpp",
+        "execution": "cpp"
     }
 }

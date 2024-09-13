@@ -185,11 +185,12 @@ namespace coacd
         const quickhull::VertexDataSource<float>& vertexBuffer = hull.getVertexBuffer();
 
         const size_t vc = vertexBuffer.size();
-        convex.points.reserve(vc);
+        std::vector<coacd::vec3d>& points = convex.points;
+        points.reserve(vc);
         for (size_t i(0); i < vc; i++)
         {
             const quickhull::Vector3<float>& vert = vertexBuffer[i];
-            convex.points.emplace_back(vert.x, vert.y, vert.z);
+            points.emplace_back(vert.x, vert.y, vert.z);
         }
 
         const size_t ic = indexBuffer.size();
