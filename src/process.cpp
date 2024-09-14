@@ -210,19 +210,23 @@ namespace coacd
 
     double pts_norm(vec3d pt, vec3d p)
     {
-        return sqrt(pow(pt[0] - p[0], 2) + pow(pt[1] - p[1], 2) + pow(pt[2] - p[2], 2));
+        const double l1 = pt[0] - p[0];
+        const double l2 = pt[1] - p[1];
+        const double l3 = pt[2] - p[2];
+        return std::sqrt(l1 * l1 + l2 * l2 + l3 * l3);
     }
 
     void DecimateCH(Model &ch, int tgt_pts, string apx_mode)
     {
         std::vector<coacd::vec3d>& ch_points = ch.points;
         std::vector<coacd::vec3i>& ch_triangles = ch.triangles;
-        if (tgt_pts >= ch_points.size()) { return; }
+        const int initial_points = (int)ch_points.size();
+        if (tgt_pts >= initial_points) { return; }
 
         std::vector<coacd::vec3d> new_pts;
         std::vector<int> rm_pt_idxs;
-        int n_pts = (int)ch_points.size();
-        const int tgt_n = std::min(tgt_pts, (int)ch_points.size());
+        int n_pts = initial_points;
+        const int tgt_n = std::min(tgt_pts, n_pts);
 
         // compute edges
         std::vector<std::pair<double, std::pair<int, int>>> edge_costs;
@@ -243,7 +247,9 @@ namespace coacd
         while (n_pts > tgt_n)
         {
             // sort the points by the cost
-            std::sort(edge_costs.begin(), edge_costs.end());
+            std::sort(edge_costs.begin(), edge_costs.end(), [](const std::pair<double, std::pair<int, int>>& e1, const std::pair<double, std::pair<int, int>>& e2) {
+                return e1.first < e2.first;
+            });
 
             // remove the edge with the smallest cost
             const std::pair<int, int>& edge = edge_costs[0].second;
@@ -259,7 +265,7 @@ namespace coacd
             edge_costs[0].first = INF;
 
             // update the neighboring edge costs
-            int new_pt_idx = ch_points.size() - 1;
+            const int new_pt_idx = ch_points.size() - 1;
             const int edge_count = (int)edge_costs.size();
             for (int i = 0; i < edge_count; i++)
             {
@@ -294,7 +300,7 @@ namespace coacd
             }
         }
 
-        new_ch.ComputeAPX(ch, apx_mode, true);
+        new_ch.ComputeAPX(ch, apx_mode, false);
     }
 
     void DecimateConvexHulls(vector<Model> &cvxs, Params &params)
